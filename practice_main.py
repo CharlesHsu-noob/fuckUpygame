@@ -14,8 +14,11 @@ bg.fill((255,255,255)) # white
 #pg.draw.line(bg,(0,255,0),(300,300),(400,400),5) #green line
 title=pg.font.SysFont("arial",72)
 titletext=title.render("FUCK U PYTHON",True,(0,0,0)) #black text
+sybau=pg.image.load("picture/sybau.png")
+sybau.convert()
 screen.blit(bg,(0,0))#display the background
 screen.blit(titletext,(100,100))
+screen.blit(sybau,(100,200))
 pg.display.update()
 # main loop
 running=True
