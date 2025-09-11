@@ -2,6 +2,7 @@ import pygame as pg
 
 pg.init()
 pg.mixer.init()
+clock=pg.time.Clock()
 menuvol=0.5#volume of menu bgm 0~1
 w,h=1300,700
 screen=pg.display.set_mode((w,h))
@@ -19,6 +20,12 @@ titletext=title.render("FUCK U PYTHON",True,(0,0,0)) #black text
 
 sybau=pg.image.load("picture/sybau.png")
 sybau.convert()
+mrbeast=pg.image.load("picture/MrBeast.png")
+mrbeast.convert()
+rect=mrbeast.get_rect()
+rect.center=(500,550)
+x,y=rect.topleft
+beastV=5
 
 menubgm=pg.mixer.Sound("voice/soundtrack/000 Edit 1 Export 1.wav")
 menubgm.set_volume(menuvol)
@@ -31,7 +38,19 @@ pg.display.update()
 # main loop
 running=True
 while running:
+    clock.tick(30)
     for event in pg.event.get():
         if event.type==pg.QUIT:
             running=False
+
+    rect.x+=beastV
+    if(rect.left<=0 or rect.right>=screen.get_width()):
+        beastV*=-1
+    
+    screen.blit(bg,(0,0))
+    screen.blit(titletext,(100,100))
+    screen.blit(sybau,(100,200))
+    screen.blit(mrbeast,rect)
+
+    pg.display.update()
 pg.quit()
