@@ -1,5 +1,5 @@
 import pygame as pg
-
+import random,math
 pg.init()
 pg.mixer.init()
 clock=pg.time.Clock()
@@ -20,12 +20,21 @@ titletext=title.render("FUCK U PYTHON",True,(0,0,0)) #black text
 
 sybau=pg.image.load("picture/sybau.png")
 sybau.convert()
-mrbeast=pg.image.load("picture/MrBeast.png")
-mrbeast.convert()
-rect=mrbeast.get_rect()
-rect.center=(500,550)
-x,y=rect.topleft
-beastV=5
+mrbeast_or=pg.image.load("picture/MrBeast.png")
+mrbeast_or.convert()
+mrbeast=pg.transform.scale(mrbeast_or,(200,130))
+beastRect=mrbeast.get_rect()
+beastRect.center=(300,550)
+beastV=7
+
+milkgragon_or=pg.image.load("picture/milkdragon.png")
+milkgragon_or.convert()
+milkgragon=pg.transform.scale(milkgragon_or,(130,170))
+milkRect=milkgragon.get_rect()
+milkRect.center=(random.randint(100,250),random.randint(150,250))
+milkdir=random.randint(20,70)
+milkdX=5*math.cos(milkdir)
+milkdY=5*math.sin(milkdir)
 
 menubgm=pg.mixer.Sound("voice/soundtrack/000 Edit 1 Export 1.wav")
 menubgm.set_volume(menuvol)
@@ -43,14 +52,21 @@ while running:
         if event.type==pg.QUIT:
             running=False
 
-    rect.x+=beastV
-    if(rect.left<=0 or rect.right>=screen.get_width()):
+    beastRect.x+=beastV
+    if(beastRect.left<=0 or beastRect.right>=screen.get_width()):
         beastV*=-1
+    milkRect.x+=milkdX
+    milkRect.y+=milkdY
+    if(milkRect.left<=0 or milkRect.right>=screen.get_width()):
+        milkdX*=-1
+    if(milkRect.top<=0 or milkRect.bottom>=screen.get_height()):
+        milkdY*=-1
     
     screen.blit(bg,(0,0))
     screen.blit(titletext,(100,100))
     screen.blit(sybau,(100,200))
-    screen.blit(mrbeast,rect)
+    screen.blit(mrbeast,beastRect)
+    screen.blit(milkgragon,milkRect)
 
     pg.display.update()
 pg.quit()
