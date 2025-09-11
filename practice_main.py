@@ -1,6 +1,7 @@
 import pygame as pg
 
 pg.init()
+pg.mixer.init()
 w,h=1300,700
 screen=pg.display.set_mode((w,h))
 pg.display.set_caption("practice")
