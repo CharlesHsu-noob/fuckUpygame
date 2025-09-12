@@ -14,24 +14,20 @@ bg.fill((255,255,255)) # white
 objectlist=pg.sprite.Group()
 
 class moveObject(pg.sprite.Sprite):
-    def __init__(self,picture,x,y,w,h,v):
+    def __init__(self,picture_path,center,size,v):
         super().__init__()
-        self.picture=picture
-        self.x=x
-        self.y=y
-        self.w=w
-        self.h=h
+        load_image=pg.image.load(picture_path).convert_alpha()
+        self.image=pg.transform.scale(load_image,size)
+        self.rect=self.image.get_rect(center=center)
         self.v=v
-        self.image=pg.transform.scale(self.picture,(self.w,self.h))
-        self.rect=self.image.get_rect()
-        self.rect.center=(self.x,self.y)
     def update(self):
         self.rect.x+=self.v
         if(self.rect.left<=0 or self.rect.right>=screen.get_width()):
             self.v*=-1
 
-mrbeast=moveObject("picture/MrBeast.png",300,550,200,130,7)
+mrbeast=moveObject("picture/MrBeast.png",(300,550),(200,130),7)
 objectlist.add(mrbeast)
+
 #main loop
 running=True
 while running:
