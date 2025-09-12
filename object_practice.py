@@ -13,7 +13,7 @@ bg.fill((255,255,255)) # white
 
 mrbeast=pg.image.load("picture/mrbeast.png")
 class mrbeast:
-    def __init()__:
+    def __init__(self):
         self.image=pg.transform.scale(mrbeast,(200,130))
         self.rect=self.image.get_rect()
         self.rect.center=(300,550)
