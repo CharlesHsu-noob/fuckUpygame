@@ -11,16 +11,27 @@ bg=pg.Surface(screen.get_size())
 bg=bg.convert()
 bg.fill((255,255,255)) # white
 
-mrbeast=pg.image.load("picture/mrbeast.png")
-class mrbeast:
-    def __init()__:
-        self.image=pg.transform.scale(mrbeast,(200,130))
-        self.rect=self.image.get_rect()
-        self.rect.center=(300,550)
-        self.v=7
-    def move()
 objectlist=pg.sprite.Group()
 
+class moveObject(pg.sprite.Sprite):
+    def __init__(self,picture,x,y,w,h,v):
+        super().__init__()
+        self.picture=picture
+        self.x=x
+        self.y=y
+        self.w=w
+        self.h=h
+        self.v=v
+        self.image=pg.transform.scale(self.picture,(self.w,self.h))
+        self.rect=self.image.get_rect()
+        self.rect.center=(self.x,self.y)
+    def update(self):
+        self.rect.x+=self.v
+        if(self.rect.left<=0 or self.rect.right>=screen.get_width()):
+            self.v*=-1
+
+mrbeast=moveObject("picture/MrBeast.png",300,550,200,130,7)
+objectlist.add(mrbeast)
 #main loop
 running=True
 while running:
@@ -29,6 +40,8 @@ while running:
     for event in pg.event.get():
         if event.type==pg.QUIT:
             running=False
+    objectlist.update()
+    objectlist.draw(screen)
     pg.display.update()
 pg.quit()
 
