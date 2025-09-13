@@ -1,21 +1,32 @@
-import time
-import win32gui
+import pygame as pg
+import sys
+pg.init()
 
-winname = "test1.py"
-hWnd = win32gui.FindWindow(None, winname)
 
-wndpl = win32gui.GetWindowPlacement(hWnd)
-old_state = wndpl[1]
-old_rect = wndpl[4]
-if old_state in [2,3]:
-    nCmdShow = 1
-    win32gui.ShowWindow(hWnd, nCmdShow)
+width,height= pg.display.Info().current_w/2, pg.display.Info().current_h/2
+screen=pg.display.set_mode((width,height))
+pg.display.set_caption("test1")
 
-win32gui.MoveWindow(hWnd, -8, -1, 1300, 540, True)
+bg=pg.Surface(screen.get_size())
+bg=bg.convert()
+bg.fill((93, 129, 199))
+screen.blit(bg,(0,0))
+pg.display.update()
 
-time.sleep(5)
 
-win32gui.MoveWindow(hWnd, *old_rect, True)
 
-if old_state in [2,3]:
-    win32gui.ShowWindow(hWnd, old_state)
+running = True
+while running:
+    for event in pg.event.get():
+        if event.type==pg.QUIT:
+            running=False
+        if event.type==pg.KEYDOWN:
+            if event.key==pg.K_F11: #toggle fullscreen
+                pg.display.toggle_fullscreen()
+                screen=pg.display.get_surface()
+                bg=pg.transform.scale(bg,screen.get_size())
+                screen.blit(bg,(0,0))
+                pg.display.update()
+                
+pg.quit()
+sys.exit()
