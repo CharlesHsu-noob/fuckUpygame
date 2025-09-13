@@ -1,9 +1,9 @@
 import pygame as pg
-import sys
+#import sys
 pg.init()
 
 
-width,height= pg.display.Info().current_w/2, pg.display.Info().current_h/2
+width,height= pg.display.Info().current_w, pg.display.Info().current_h
 screen=pg.display.set_mode((width,height))
 pg.display.set_caption("test1")
 
@@ -21,7 +21,7 @@ while running:
         if event.type==pg.QUIT:
             running=False
         if event.type==pg.KEYDOWN:
-            if event.key==pg.K_F11: #toggle fullscreen
+            if event.key==pg.K_f: #toggle fullscreen
                 pg.display.toggle_fullscreen()
                 screen=pg.display.get_surface()
                 bg=pg.transform.scale(bg,screen.get_size())
@@ -29,4 +29,4 @@ while running:
                 pg.display.update()
                 
 pg.quit()
-sys.exit()
+#sys.exit()
