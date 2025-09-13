@@ -1,5 +1,5 @@
 import pygame as pg
-import random,math
+import random,math,os
 pg.init()
 pg.mixer.init()
 clock=pg.time.Clock()
@@ -10,10 +10,11 @@ pg.display.set_caption("object_practice")
 bg=pg.Surface(screen.get_size())
 bg=bg.convert()
 bg.fill((255,255,255)) # white
-main_menu_bg_or=pg.image.load("picture/main_menu_bg.png")
-main_menu_bg_or.convert()
-mainMenuBg=pg.transform.scale(main_menu_bg_or.convert_alpha(),(w,h))
-main_menu_objectlist=pg.sprite.Group()
+
+# --- Sprite Groups ---
+main_menu_sprites = pg.sprite.Group()
+in_game_sprites = pg.sprite.Group()
+all_sprites = pg.sprite.Group() # Group for sprites that appear in all states, like exit button
 
 class moveObject(pg.sprite.Sprite):
     def __init__(self,picture_path,center,size,v,israndom):
@@ -69,43 +70,93 @@ class buttonObject(pg.sprite.Sprite):
             self.image=self.images[0]
             self.ispress=False
 
+class characterObject(pg.sprite.Sprite):
+    def __init__(self,picture_paths,default_center,size):
+        super().__init__()
+        self.images = [] 
+        try:
+            for path in picture_paths:
+                self.images.append(pg.transform.scale(pg.image.load(path).convert_alpha(), size))
+            self.image = self.images[0]
+        except pg.error:
+            self.image = pg.Surface(size)
+            self.image.fill((0, 255, 0)) # Green placeholder
+        self.v=5
+        self.rect=self.image.get_rect(center=default_center)
+    def update(self):
+        keys=pg.key.get_pressed()
+        if keys[pg.K_w] and self.rect.top>0:
+            self.rect.y-=self.v
+        if keys[pg.K_s] and self.rect.bottom<h:
+            self.rect.y+=self.v
+        if keys[pg.K_a] and self.rect.left>0:
+            self.rect.x-=self.v
+        if keys[pg.K_d] and self.rect.right<w:
+            self.rect.x+=self.v
+
 
 mrbeast=moveObject("picture/MrBeast.png",(300,550),(200,130),7,False)
-main_menu_objectlist.add(mrbeast)
+main_menu_sprites.add(mrbeast)
 milk=moveObject("picture/milkdragon.png",(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
-main_menu_objectlist.add(milk)
+main_menu_sprites.add(milk)
 
 sybau_paths=["picture/sybau/sybau1.png",
              "picture/sybau/sybau2.png",
              "picture/sybau/sybau3.png"]
 sybau=buttonObject(sybau_paths,(200,300),(200,200))
-main_menu_objectlist.add(sybau)
+main_menu_sprites.add(sybau)
 exit_paths=["picture/exit/exit1.png",
             "picture/exit/exit2.png",
             "picture/exit/exit3.png"]
 exit=buttonObject(exit_paths,(w-60,h-30),(105,45))
-main_menu_objectlist.add(exit)
+all_sprites.add(exit)
+
+kingnom_paths=["picture/kingnom/kingnom1.png",
+             "picture/kingnom/kingnom2.png"]
+kingnom=characterObject(kingnom_paths,(w/2,h/2),(110,125))
+in_game_sprites.add(kingnom)
 
 title=pg.font.SysFont("arial",72)
 titletext=title.render("TEST MENU",True,(0,0,255))
 
+main_menu_bg_or=pg.image.load("picture/back_ground/main_menu_bg.png")
+main_menu_bg_or.convert()
+mainMenuBg=pg.transform.scale(main_menu_bg_or.convert_alpha(),(w,h))
 def main_menu():
     screen.blit(mainMenuBg,(0,0))
     screen.blit(titletext,(100,100))
-    main_menu_objectlist.update()
-    main_menu_objectlist.draw(screen)
+    main_menu_sprites.update()
+    main_menu_sprites.draw(screen)
+
+in_game_bg_or=pg.image.load("picture/back_ground/in_game_bg.png")
+in_game_bg_or.convert()
+inGameBg=pg.transform.scale(in_game_bg_or.convert_alpha(),(w,h))
+def in_game():
+    screen.blit(inGameBg,(0,0))
+    in_game_sprites.update()
+    in_game_sprites.draw(screen)
+    
+
 
 #main loop
 running=True
+game_state="main_menu"
 while running:
     clock.tick(30)
-    screen.blit(bg,(0,0))
+    #screen.blit(bg,(0,0))
     for event in pg.event.get():
         if event.type==pg.QUIT:
             running=False
-    main_menu()
-    if exit.ispress and exit.istouch:
-        running=False
+    all_sprites.update()
+    if game_state == "main_menu":
+        main_menu()
+        if sybau.ispress:
+            game_state = "in_game"
+    elif game_state == "in_game":
+        in_game()
+    all_sprites.draw(screen)
+    if exit.ispress:
+        running = False 
     pg.display.update()
 pg.quit()
 
