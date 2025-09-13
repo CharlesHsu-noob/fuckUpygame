@@ -75,9 +75,16 @@ main_menu_objectlist.add(mrbeast)
 milk=moveObject("picture/milkdragon.png",(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
 main_menu_objectlist.add(milk)
 
-sybau_paths=["picture/sybau1.png","picture/sybau2.png","picture/sybau3.png"]
+sybau_paths=["picture/sybau/sybau1.png",
+             "picture/sybau/sybau2.png",
+             "picture/sybau/sybau3.png"]
 sybau=buttonObject(sybau_paths,(200,300),(200,200))
 main_menu_objectlist.add(sybau)
+exit_paths=["picture/exit/exit1.png",
+            "picture/exit/exit2.png",
+            "picture/exit/exit3.png"]
+exit=buttonObject(exit_paths,(w-60,h-30),(105,45))
+main_menu_objectlist.add(exit)
 
 title=pg.font.SysFont("arial",72)
 titletext=title.render("TEST MENU",True,(0,0,255))
@@ -87,6 +94,7 @@ def main_menu():
     screen.blit(titletext,(100,100))
     main_menu_objectlist.update()
     main_menu_objectlist.draw(screen)
+
 #main loop
 running=True
 while running:
@@ -96,6 +104,8 @@ while running:
         if event.type==pg.QUIT:
             running=False
     main_menu()
+    if exit.ispress and exit.istouch:
+        running=False
     pg.display.update()
 pg.quit()
 

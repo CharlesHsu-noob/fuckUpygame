@@ -18,7 +18,7 @@ bg.fill((255,255,255)) # white
 title=pg.font.SysFont("arial",72)
 titletext=title.render("FUCK U PYTHON",True,(0,0,0)) #black text
 
-sybau=pg.image.load("picture/sybau1.png")
+sybau=pg.image.load("picture/sybau/sybau1.png")
 sybau.convert()
 mrbeast_or=pg.image.load("picture/MrBeast.png")
 mrbeast_or.convert()
