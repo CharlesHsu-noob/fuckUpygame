@@ -10,29 +10,45 @@ pg.display.set_caption("object_practice")
 bg=pg.Surface(screen.get_size())
 bg=bg.convert()
 bg.fill((255,255,255)) # white
-
+mainMenuBg=pg.transform.scale(pg.image.load("picture/main_menu_bg.png").convert_alpha(),(w,h))
 objectlist=pg.sprite.Group()
 
 class moveObject(pg.sprite.Sprite):
-    def __init__(self,picture_path,center,size,v):
+    def __init__(self,picture_path,center,size,v,israndom):
         super().__init__()
         load_image=pg.image.load(picture_path).convert_alpha()
         self.image=pg.transform.scale(load_image,size)
         self.rect=self.image.get_rect(center=center)
-        self.v=v
+        if israndom:
+            self.pos=(random.randint(20,70))
+        else:
+            self.pos=0
+        self.dx=v*math.cos(self.pos)
+        self.dy=v*math.sin(self.pos)
+        
     def update(self):
-        self.rect.x+=self.v
+        self.rect.x+=self.dx
+        self.rect.y+=self.dy
         if(self.rect.left<=0 or self.rect.right>=screen.get_width()):
-            self.v*=-1
+            self.dx*=-1
+        if(self.rect.top<=0 or self.rect.bottom>=screen.get_height()):
+            self.dy*=-1
 
-mrbeast=moveObject("picture/MrBeast.png",(300,550),(200,130),7)
+
+mrbeast=moveObject("picture/MrBeast.png",(300,550),(200,130),7,False)
 objectlist.add(mrbeast)
+milk=moveObject("picture/milkdragon.png",(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
+objectlist.add(milk)
 
+title=pg.font.SysFont("arial",72)
+titletext=title.render("TEST MENU",True,(0,0,255))
 #main loop
 running=True
 while running:
     clock.tick(30)
-    screen.blit(bg,(0,20))
+    screen.blit(bg,(0,0))
+    screen.blit(mainMenuBg,(0,0))
+    screen.blit(titletext,(100,100))
     for event in pg.event.get():
         if event.type==pg.QUIT:
             running=False
