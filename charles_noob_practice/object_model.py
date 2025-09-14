@@ -70,6 +70,36 @@ class buttonObject(pg.sprite.Sprite):
             self.image=self.images[0]
             self.ispress=False
 
+class sliderRailObject(pg.sprite.Sprite):
+    def __init__(self,picture_path,center,size):
+        super().__init__()
+        load_image=pg.image.load(picture_path).convert_alpha()
+        self.image=pg.transform.scale(load_image,size)
+        self.rect=self.image.get_rect(center=center)
+        self.minx=self.rect.left,self.maxx=self.rect.right
+
+class sliderTwistObject(pg.sprite.Sprite):
+    def __init__(self,picture_path,center,size,min_val,max_val,default_val):
+        super().__init__()
+        self.min_val=min_val
+        self.max_val=max_val
+        self.current_val=default_val
+        self.isdrag=False
+        self.image=pg.transform.scale(pg.image.load(picture_path).convert_alpha(), size)
+        self.rect=self.image.get_rect(center=center)
+    def update(self,minx,maxx):
+        mouse_pos = pg.mouse.get_pos()
+        mouse_pressed = pg.mouse.get_pressed()[0]
+        if self.rect.collidepoint(mouse_pos) and mouse_pressed:
+            self.isdrag=True
+        else:
+            self.isdrag=False
+        if self.isdrag and self.rect.left<=maxx and self.rect.right>=minx:
+            self.rect.x=mouse_pos[0]
+            self.current_val=self.min_val+((self.rect.centerx-minx)/(maxx-minx))*(self.max_val-self.min_val)
+
+
+
 class characterObject(pg.sprite.Sprite):
     def __init__(self,picture_paths,move_paths,default_center,size):
         super().__init__()
