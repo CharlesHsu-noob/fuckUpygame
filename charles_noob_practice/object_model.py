@@ -252,6 +252,9 @@ title=pg.font.Font("font/Sacramento-Regular.ttf", 65)
 titletext=title.render("KINGNOM's big adventure",True,(0,200,200))
 titleZH=pg.font.Font("font/bpm/BpmfZihiSerif-Regular.ttf",40)
 titleZHtext=titleZH.render("金農的大冒險",True,(255,200,200))
+volvalue=0
+vol_value=pg.font.SysFont("times new roman",20)
+vol_valuetext=vol_value.render(str(volvalue),True,(255,255,255))
 
 main_menu_bg_or=pg.image.load("picture/back_ground/main_menu_bg.png")
 main_menu_bg_or.convert()
@@ -266,6 +269,9 @@ def main_menu():
     screen.blit(titleZHtext,(100,170))
     main_menu_sprites.update()
     main_menu_sprites.draw(screen)
+    volvalue=float(volume_twist.current_val*100)/0.4
+    vol_valuetext=vol_value.render(str(int(volvalue)),True,(255,255,255))
+    screen.blit(vol_valuetext,(w-490,h-40))
     pg.mixer.music.set_volume(volume_twist.current_val)
 
 
