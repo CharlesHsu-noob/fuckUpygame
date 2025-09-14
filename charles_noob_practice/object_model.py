@@ -14,6 +14,7 @@ bg.fill((255,255,255)) # white
 # --- Sprite Groups ---
 main_menu_sprites = pg.sprite.Group()
 in_game_sprites = pg.sprite.Group()
+#map_sprites = pg.sprite.Group()
 
 class moveObject(pg.sprite.Sprite):
     def __init__(self,picture_path,center,size,v,israndom):
@@ -149,26 +150,32 @@ class characterObject(pg.sprite.Sprite):
         except pg.error:
             self.image = pg.Surface(size)
             self.image.fill((0, 255, 0)) # Green placeholder
-        self.v=5
+        self.v=10
         self.rect=self.image.get_rect(center=default_center)
         self.is_move=False
     def update(self):
         self.is_move=False
+        dx=0
+        dy=0
         keys=pg.key.get_pressed()
         if keys[pg.K_w] and self.rect.top>0:
-            self.rect.y-=self.v
+            #self.rect.y-=self.v
+            dy+=self.v
             self.is_move=True
             self.flipy=1
         if keys[pg.K_s] and self.rect.bottom<h:
-            self.rect.y+=self.v
+            #self.rect.y+=self.v
+            dy-=self.v
             self.is_move=True
             self.flipy=0
         if keys[pg.K_a] and self.rect.left>0:
-            self.rect.x-=self.v
+            #self.rect.x-=self.v
+            dx-=self.v
             self.is_move=True
             self.flipx=0
         if keys[pg.K_d] and self.rect.right<w:
-            self.rect.x+=self.v
+            #self.rect.x+=self.v
+            dx+=self.v
             self.is_move=True
             self.flipx=1
         if self.move_index>=3:
@@ -179,9 +186,26 @@ class characterObject(pg.sprite.Sprite):
         else:
             self.image=pg.transform.flip(self.moves[self.move_index // 2],self.flipx,self.flipy)
             self.move_index+=1
+        self.distant=[dx,dy]
+
+class mapObject(pg.sprite.Sprite):
+    def __init__(self,picture_path,center,size):
+        super().__init__()   
+        self.image=pg.transform.scale(pg.image.load(picture_path).convert_alpha(),size)
+        self.rect=self.image.get_rect(center=center)
+    def update(self,dx,dy,playerw,playerh):
+        self.rect.x-=dx
+        self.rect.y+=dy
+        # 限制地圖的邊界，使其不會移出螢幕範圍 (Clamping)
+        if self.rect.left>w/2-playerw/2:
+            self.rect.left=w/2-playerw/2
+        if self.rect.right<w/2+playerw/2:
+            self.rect.right=w/2+playerw/2
+        if self.rect.top>h/2-playerh/2:
+            self.rect.top=h/2-playerh/2
+        if self.rect.bottom<h/2+playerh/2:
+            self.rect.bottom=h/2+playerh/2
         
-
-
 mrbeast=moveObject("picture/MrBeast.png",(300,550),(200,130),7,False)
 main_menu_sprites.add(mrbeast)
 milk=moveObject("picture/milkdragon.png",(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
@@ -236,12 +260,23 @@ def main_menu():
     main_menu_sprites.draw(screen)
     pg.mixer.music.set_volume(volume_twist.current_val)
 
-in_game_bg_or=pg.image.load("picture/back_ground/in_game_bg.png")
-in_game_bg_or.convert()
-inGameBg=pg.transform.scale(in_game_bg_or.convert_alpha(),(w,h))
+
+inGameBg=mapObject("picture/back_ground/map2.png",(w/2,h/2),(4160,3760))
 def in_game():
-    screen.blit(inGameBg,(0,0))
+    #screen.blit(inGameBg.image,inGameBg.rect)
     in_game_sprites.update()
+    dx,dy=kingnom.distant
+    playerw,playerh=kingnom.rect.size
+    inGameBg.update(dx,dy,playerw,playerh)
+    if inGameBg.rect.top<0:
+        screen.blit(bg,(0,0))
+    elif inGameBg.rect.bottom>h:
+        screen.blit(bg,(0,0))
+    elif inGameBg.rect.left>0:
+        screen.blit(bg,(0,0))
+    elif inGameBg.rect.right<w:
+        screen.blit(bg,(0,0))
+    screen.blit(inGameBg.image,inGameBg.rect)
     in_game_sprites.draw(screen)
 
 #main loop
