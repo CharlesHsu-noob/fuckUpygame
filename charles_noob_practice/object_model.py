@@ -157,30 +157,35 @@ class characterObject(pg.sprite.Sprite):
         self.rect=self.image.get_rect(center=default_center)
         self.is_move=False
     def update(self):
+        akey_ispress=False
         self.is_move=False
         dx=0
         dy=0
         keys=pg.key.get_pressed()
-        if keys[pg.K_w] and self.rect.top>0:
+        if keys[pg.K_w] and self.rect.top>0 and not akey_ispress:
             #self.rect.y-=self.v
             dy+=self.v
             self.is_move=True
             self.flipy=1
-        if keys[pg.K_s] and self.rect.bottom<h:
+            akey_ispress=True
+        if keys[pg.K_s] and self.rect.bottom<h and not akey_ispress:
             #self.rect.y+=self.v
             dy-=self.v
             self.is_move=True
             self.flipy=0
-        if keys[pg.K_a] and self.rect.left>0:
+            akey_ispress=True
+        if keys[pg.K_a] and self.rect.left>0 and not akey_ispress:
             #self.rect.x-=self.v
             dx-=self.v
             self.is_move=True
             self.flipx=0
-        if keys[pg.K_d] and self.rect.right<w:
+            akey_ispress=True
+        if keys[pg.K_d] and self.rect.right<w and not akey_ispress:
             #self.rect.x+=self.v
             dx+=self.v
             self.is_move=True
             self.flipx=1
+            akey_ispress=True
         if self.move_index>=3:
             self.move_index=0
         
