@@ -234,7 +234,7 @@ class mapObject(pg.sprite.Sprite):
             self.rect.top=h/2-playerh/2
         if self.rect.bottom<h/2+playerh/2:
             self.rect.bottom=h/2+playerh/2
-        
+
 mrbeast=moveObject("picture/MrBeast.png",(300,550),(200,130),7,False)
 main_menu_sprites.add(mrbeast)
 milk=moveObject("picture/milkdragon.png",(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
@@ -251,6 +251,10 @@ exit_paths=["picture/exit/exit1.png",
 exit=buttonObject(exit_paths,(w-60,h-30),(105,45))
 main_menu_sprites.add(exit)
 in_game_sprites.add(exit)
+transition_omega=2
+transition_d_scale=0.1
+sybau_transition=pg.image.load("picture/sybau/sybau3.png").convert_alpha()
+sybau_transition=pg.transform.scale(sybau_transition,(200,200))
 
 kingnom_paths=["picture/kingnom/kingnom_stand1.png",
              "picture/kingnom/kingnom_stand2.png"]
@@ -319,7 +323,11 @@ def in_game(pressKeyQueue):
 
 #main loop
 running=True
-game_state="main_menu"
+game_state = "main_menu"
+transition_counter = 0 # <--- 新增轉場計數器
+
+# game loop
+running=True
 while running:
     clock.tick(30)
     #screen.blit(bg,(0,0))
@@ -340,7 +348,29 @@ while running:
     if game_state == "main_menu":
         main_menu()
         if sybau.ispress:
+            game_state = "transition" 
+            sybau.ispress = False 
+
+    elif game_state == "transition":
+        # 在 transition 狀態下，每一幀執行一次動畫
+        if transition_counter < 50: 
+            current_scale = 1 + (transition_counter / 30) * 7
+            current_angle = transition_counter * 8
+            new_image = pg.transform.rotozoom(sybau_transition, current_angle, current_scale)
+            new_rect = new_image.get_rect(center=(sybau.rect.centerx, sybau.rect.centery))
+            alpha=255-(transition_counter*5)
+            new_image.set_alpha(alpha)
+            mainMenuBg.set_alpha(alpha)
+            kingnom.image.set_alpha(transition_counter*5)
+            screen.blit(inGameBg.image,inGameBg.rect)
+            screen.blit(kingnom.image,kingnom.rect)
+            screen.blit(mainMenuBg,(0,0))
+            screen.blit(new_image, new_rect)
+            transition_counter += 1
+        else:
             game_state = "in_game"
+            transition_counter = 0
+
     elif game_state == "in_game":
         in_game(pressKeyQueue)
     
