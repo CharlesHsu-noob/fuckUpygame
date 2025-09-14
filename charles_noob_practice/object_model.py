@@ -190,7 +190,7 @@ main_menu_sprites.add(milk)
 sybau_paths=["picture/sybau/sybau1.png",
              "picture/sybau/sybau2.png",
              "picture/sybau/sybau3.png"]
-sybau=buttonObject(sybau_paths,(200,300),(200,200))
+sybau=buttonObject(sybau_paths,(200,325),(200,200))
 main_menu_sprites.add(sybau)
 exit_paths=["picture/exit/exit1.png",
             "picture/exit/exit2.png",
@@ -216,8 +216,10 @@ main_menu_sprites.add(volume_twist)
 in_game_sprites.add(volume_rail)
 in_game_sprites.add(volume_twist)
 
-title=pg.font.SysFont("arial",72)
-titletext=title.render("TEST MENU",True,(0,0,255))
+title=pg.font.Font("font/Sacramento-Regular.ttf", 65)
+titletext=title.render("KINGNOM's big adventure",True,(0,200,200))
+titleZH=pg.font.Font("font/bpm/BpmfZihiSerif-Regular.ttf",40)
+titleZHtext=titleZH.render("金農的大冒險",True,(255,200,200))
 
 main_menu_bg_or=pg.image.load("picture/back_ground/main_menu_bg.png")
 main_menu_bg_or.convert()
@@ -229,6 +231,7 @@ pg.mixer.music.play(loops=-1, fade_ms=1500)
 def main_menu():
     screen.blit(mainMenuBg,(0,0))
     screen.blit(titletext,(100,100))
+    screen.blit(titleZHtext,(100,170))
     main_menu_sprites.update()
     main_menu_sprites.draw(screen)
     pg.mixer.music.set_volume(volume_twist.current_val)
