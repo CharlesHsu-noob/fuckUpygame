@@ -76,7 +76,8 @@ class characterObject(pg.sprite.Sprite):
         self.images = [] 
         self.moves=[]
         self.move_index=0
-        self.flip=0
+        self.flipx=0
+        self.flipy=0
         try:
             for path in picture_paths:
                 self.images.append(pg.transform.scale(pg.image.load(path).convert_alpha(), size))
@@ -99,30 +100,26 @@ class characterObject(pg.sprite.Sprite):
         if keys[pg.K_w] and self.rect.top>0:
             self.rect.y-=self.v
             self.is_move=True
+            self.flipy=1
         if keys[pg.K_s] and self.rect.bottom<h:
             self.rect.y+=self.v
             self.is_move=True
+            self.flipy=0
         if keys[pg.K_a] and self.rect.left>0:
             self.rect.x-=self.v
             self.is_move=True
-            self.flip=0
+            self.flipx=0
         if keys[pg.K_d] and self.rect.right<w:
             self.rect.x+=self.v
             self.is_move=True
-            self.flip=1
+            self.flipx=1
         if self.move_index>=3:
             self.move_index=0
         
         if not self.is_move:
-            if self.flip==0:
-                self.image=self.images[0]
-            elif self.flip==1:
-                self.image=pg.transform.flip(self.images[0],True,False)
+            self.image=pg.transform.flip(self.images[0],self.flipx,self.flipy)
         else:
-            if self.flip==0:
-                self.image=self.moves[self.move_index // 2]
-            elif self.flip==1:
-                self.image=pg.transform.flip(self.moves[self.move_index // 2],True,False)
+            self.image=pg.transform.flip(self.moves[self.move_index // 2],self.flipx,self.flipy)
             self.move_index+=1
         
 
@@ -143,8 +140,8 @@ exit_paths=["picture/exit/exit1.png",
 exit=buttonObject(exit_paths,(w-60,h-30),(105,45))
 all_sprites.add(exit)
 
-kingnom_paths=["picture/kingnom/kingnom1.png",
-             "picture/kingnom/kingnom2.png"]
+kingnom_paths=["picture/kingnom/kingnom_stand1.png",
+             "picture/kingnom/kingnom_stand2.png"]
 kingnom_move_paths=[
     "picture/kingnom/kingnom_move1.png",
     "picture/kingnom/kingnom_move2.png"
