@@ -34,11 +34,17 @@ class player():
                 return 2
             elif event.key == pg.K_s:
                 return 3
-    def move(self):
+        else:
+            return 0
+    def move(self,face):
+        
+        #event = pg.event.poll()
+       
         keys=pg.key.get_pressed()
         if keys[pg.K_w] or keys[pg.K_a] or keys[pg.K_s] or keys[pg.K_d]:
-            nx=self.rect.x+math.cos(math.pi*self.face()/2)*5
-            ny=self.rect.y-math.sin(math.pi*self.face()/2)*5
+            r=face/2
+            nx=self.rect.x+math.cos(r*math.pi)*5
+            ny=self.rect.y-math.sin(r*math.pi)*5
             if nx>=0 and nx<=width and ny>=0 and ny<=height:
                 self.rect.x=nx
                 self.rect.y=ny
@@ -59,12 +65,25 @@ rock=player("test_Star1nDream/image/test3-2.png")
 running=True
 
 while running:
-    rock.move()
-    rock.draw()
-    pg.display.update()
+    screen.blit(bg,(0,0))  
+    screen.blit(bgi,(0,0))
+    #face=rock.face() 
+    
     for event in pg.event.get():
+        if event.type == pg.KEYDOWN:
+            if event.key == pg.K_d:
+                face= 0
+            elif event.key == pg.K_w:
+                face= 1
+            elif event.key == pg.K_a:
+                face= 2
+            elif event.key == pg.K_s:
+                face= 3
         if event.type==pg.QUIT:
             running=False
+    rock.move(face)
+    rock.draw()
+    pg.display.update()
     
 
 pg.quit()
