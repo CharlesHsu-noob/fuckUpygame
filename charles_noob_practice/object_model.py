@@ -10,6 +10,7 @@ pg.display.set_caption("object_practice")
 bg=pg.Surface(screen.get_size())
 bg=bg.convert()
 bg.fill((0,0,0)) # black
+pressKeyQueue=[]
 
 # --- Sprite Groups ---
 main_menu_sprites = pg.sprite.Group()
@@ -156,12 +157,12 @@ class characterObject(pg.sprite.Sprite):
         self.v=10
         self.rect=self.image.get_rect(center=default_center)
         self.is_move=False
-    def update(self):
+    def update(self,pressKeyQueue):
         akey_ispress=False
         self.is_move=False
         dx=0
         dy=0
-        keys=pg.key.get_pressed()
+        '''keys=pg.key.get_pressed()
         if keys[pg.K_w] and self.rect.top>0 and not akey_ispress:
             #self.rect.y-=self.v
             dy+=self.v
@@ -185,7 +186,27 @@ class characterObject(pg.sprite.Sprite):
             dx+=self.v
             self.is_move=True
             self.flipx=1
-            akey_ispress=True
+            akey_ispress=True'''
+        # 如果列表中有按鍵，就處理最新按下的那個
+        if pressKeyQueue:
+            latest_key = pressKeyQueue[-1] # 獲取列表最後一個元素
+            
+            if latest_key == pg.K_w:
+                dy = -self.v
+                self.is_move = True
+                self.flipy = 1
+            elif latest_key == pg.K_s:
+                dy = self.v
+                self.is_move = True
+                self.flipy = 0
+            elif latest_key == pg.K_a:
+                dx = -self.v
+                self.is_move = True
+                self.flipx = 0
+            elif latest_key == pg.K_d:
+                dx = self.v
+                self.is_move = True
+                self.flipx = 1
         if self.move_index>=3:
             self.move_index=0
         
@@ -203,7 +224,7 @@ class mapObject(pg.sprite.Sprite):
         self.rect=self.image.get_rect(center=center)
     def update(self,dx,dy,playerw,playerh):
         self.rect.x-=dx
-        self.rect.y+=dy
+        self.rect.y-=dy
         # 限制地圖的邊界，使其不會移出螢幕範圍 (Clamping)
         if self.rect.left>w/2-playerw/2:
             self.rect.left=w/2-playerw/2
@@ -238,7 +259,7 @@ kingnom_move_paths=[
     "picture/kingnom/kingnom_move2.png"
 ]
 kingnom=characterObject(kingnom_paths,kingnom_move_paths,(w/2,h/2),(110,125))
-in_game_sprites.add(kingnom)
+#in_game_sprites.add(kingnom)
 
 defaultvol=0.2
 volume_rail=sliderRailObject("picture/sound_slider/slider_rail.png",(w-300,h-30),(300,10))
@@ -276,9 +297,10 @@ def main_menu():
 
 
 inGameBg=mapObject("picture/back_ground/map2.png",(w/2,h/2),(4160,3760))
-def in_game():
+def in_game(pressKeyQueue):
     #screen.blit(inGameBg.image,inGameBg.rect)
     in_game_sprites.update()
+    kingnom.update(pressKeyQueue)
     dx,dy=kingnom.distant
     playerw,playerh=kingnom.rect.size
     inGameBg.update(dx,dy,playerw,playerh)
@@ -292,6 +314,7 @@ def in_game():
         screen.blit(bg,(0,0))
     screen.blit(inGameBg.image,inGameBg.rect)
     in_game_sprites.draw(screen)
+    screen.blit(kingnom.image,kingnom.rect)
     pg.mixer.music.set_volume(volume_twist.current_val)
 
 #main loop
@@ -303,13 +326,23 @@ while running:
     for event in pg.event.get():
         if event.type==pg.QUIT:
             running=False
+         # 偵測按鍵事件，並更新按鍵列表
+        if event.type == pg.KEYDOWN:
+            # 確保同一個鍵不會被重複加入
+            if event.key in [pg.K_w, pg.K_a, pg.K_s, pg.K_d]:
+                if event.key not in pressKeyQueue:
+                    pressKeyQueue.append(event.key)
+
+        if event.type == pg.KEYUP:
+            if event.key in pressKeyQueue:
+                pressKeyQueue.remove(event.key)
     
     if game_state == "main_menu":
         main_menu()
         if sybau.ispress:
             game_state = "in_game"
     elif game_state == "in_game":
-        in_game()
+        in_game(pressKeyQueue)
     
     if exit.ispress:
         running = False 
