@@ -9,7 +9,7 @@ screen = pg.display.set_mode((w,h))
 pg.display.set_caption("object_practice")
 bg=pg.Surface(screen.get_size())
 bg=bg.convert()
-bg.fill((255,255,255)) # white
+bg.fill((0,0,0)) # black
 
 # --- Sprite Groups ---
 main_menu_sprites = pg.sprite.Group()
@@ -41,7 +41,7 @@ class moveObject(pg.sprite.Sprite):
 class buttonObject(pg.sprite.Sprite):
     def __init__(self,picture_paths,center,size):
         super().__init__()
-        self.istouch=False
+        self._is_held=False# 內部狀態：追蹤滑鼠是否正按在按鈕上
         self.ispress=False
         self.images = [
             pg.transform.scale(pg.image.load(picture_paths[0]).convert_alpha(), size),
@@ -51,24 +51,27 @@ class buttonObject(pg.sprite.Sprite):
         self.image=self.images[0]
         self.rect=self.image.get_rect(center=center)
     def update(self):
+        self.ispress = False
         mouse_pos = pg.mouse.get_pos()
-        mouse_pressed = pg.mouse.get_pressed()[0]
-        # 使用 collidepoint 進行更簡單的碰撞偵測
-        if self.rect.collidepoint(mouse_pos):
-            self.image = self.images[1]
-            self.istouch=True
+        mouse_down = pg.mouse.get_pressed()[0]
+        is_mouse_over = self.rect.collidepoint(mouse_pos)
+
+        if is_mouse_over:
+            if mouse_down:
+                # 情況1: 滑鼠在按鈕上，且正被按住
+                self.image = self.images[2] 
+                self._is_held = True
+            else:
+                # 情況2: 滑鼠在按鈕上，但沒有被按住
+                self.image = self.images[1] 
+                # 如果上一幀是按住的狀態，代表滑鼠剛被釋放，這就是一次 "點擊"
+                if self._is_held:
+                    self.ispress = True
+                self._is_held = False
         else:
+            # 情況3: 滑鼠不在按鈕上
             self.image = self.images[0]
-            self.istouch=False
-        if self.istouch and mouse_pressed:
-            self.image=self.images[2]
-            self.ispress=True
-        elif self.istouch:
-            self.image=self.images[1]
-            self.ispress=False
-        else:
-            self.image=self.images[0]
-            self.ispress=False
+            self._is_held = False
 
 class sliderRailObject(pg.sprite.Sprite):
     def __init__(self,picture_path,center,size):
@@ -278,6 +281,7 @@ def in_game():
         screen.blit(bg,(0,0))
     screen.blit(inGameBg.image,inGameBg.rect)
     in_game_sprites.draw(screen)
+    pg.mixer.music.set_volume(volume_twist.current_val)
 
 #main loop
 running=True
@@ -300,5 +304,3 @@ while running:
         running = False 
     pg.display.update()
 pg.quit()
-
-
