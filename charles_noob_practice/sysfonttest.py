@@ -11,7 +11,7 @@ pygame.display.set_caption("Pygame 字體預覽工具")
 clock = pygame.time.Clock()
 
 # 取得所有系統字體列表
-font_list = pygame.font.get_sdl_ttf_version()
+font_list = pygame.font.get_fonts()
 
 # 顯示的文字內容
 sample_text = "TEST 1234 ,.~! 測試中文"
