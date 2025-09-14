@@ -14,7 +14,6 @@ bg.fill((255,255,255)) # white
 # --- Sprite Groups ---
 main_menu_sprites = pg.sprite.Group()
 in_game_sprites = pg.sprite.Group()
-all_sprites = pg.sprite.Group() # Group for sprites that appear in all states, like exit button
 
 class moveObject(pg.sprite.Sprite):
     def __init__(self,picture_path,center,size,v,israndom):
@@ -76,29 +75,54 @@ class sliderRailObject(pg.sprite.Sprite):
         load_image=pg.image.load(picture_path).convert_alpha()
         self.image=pg.transform.scale(load_image,size)
         self.rect=self.image.get_rect(center=center)
-        self.minx=self.rect.left,self.maxx=self.rect.right
+        self.minx=self.rect.left
+        self.maxx=self.rect.right
 
 class sliderTwistObject(pg.sprite.Sprite):
-    def __init__(self,picture_path,center,size,min_val,max_val,default_val):
+    def __init__(self,picture_path,center,size,min_val,max_val,default_val,rail):
         super().__init__()
+        self.rail=rail
         self.min_val=min_val
         self.max_val=max_val
         self.current_val=default_val
         self.isdrag=False
+        self.last_press=False
         self.image=pg.transform.scale(pg.image.load(picture_path).convert_alpha(), size)
         self.rect=self.image.get_rect(center=center)
-    def update(self,minx,maxx):
+    def update(self):
+        minx=self.rail.minx
+        maxx=self.rail.maxx
         mouse_pos = pg.mouse.get_pos()
         mouse_pressed = pg.mouse.get_pressed()[0]
+        if mouse_pressed:
+            self.last_press=True
+        else:
+            self.last_press=False
+        #isdrag logic:True
         if self.rect.collidepoint(mouse_pos) and mouse_pressed:
             self.isdrag=True
-        else:
+            self.last_press=True
+        elif not self.rect.collidepoint(mouse_pos) and self.last_press and mouse_pressed:
+            self.isdrag=True
+        #isdrag logic:False
+        if self.rect.collidepoint(mouse_pos) and not self.last_press and not mouse_pressed:
             self.isdrag=False
-        if self.isdrag and self.rect.left<=maxx and self.rect.right>=minx:
-            self.rect.x=mouse_pos[0]
-            self.current_val=self.min_val+((self.rect.centerx-minx)/(maxx-minx))*(self.max_val-self.min_val)
+        elif not self.rect.collidepoint(mouse_pos) and not self.last_press:
+            self.isdrag=False
+            if mouse_pressed:
+                self.last_press=True
 
-
+        #move logic
+        if self.isdrag:
+            self.rect.centerx = mouse_pos[0]
+            # Clamp the position to the rail's boundaries
+            minx = self.rail.minx
+            maxx = self.rail.maxx
+            if self.rect.centerx < minx:
+                self.rect.centerx = minx
+            if self.rect.centerx > maxx:
+                self.rect.centerx = maxx
+            self.current_val=self.min_val+(self.max_val-self.min_val)*(self.rect.centerx-minx)/(maxx-minx)
 
 class characterObject(pg.sprite.Sprite):
     def __init__(self,picture_paths,move_paths,default_center,size):
@@ -168,7 +192,8 @@ exit_paths=["picture/exit/exit1.png",
             "picture/exit/exit2.png",
             "picture/exit/exit3.png"]
 exit=buttonObject(exit_paths,(w-60,h-30),(105,45))
-all_sprites.add(exit)
+main_menu_sprites.add(exit)
+in_game_sprites.add(exit)
 
 kingnom_paths=["picture/kingnom/kingnom_stand1.png",
              "picture/kingnom/kingnom_stand2.png"]
@@ -179,17 +204,30 @@ kingnom_move_paths=[
 kingnom=characterObject(kingnom_paths,kingnom_move_paths,(w/2,h/2),(110,125))
 in_game_sprites.add(kingnom)
 
+defaultvol=0.2
+volume_rail=sliderRailObject("picture/sound_slider/slider_rail.png",(w-300,h-30),(300,10))
+volume_twist=sliderTwistObject("picture/sound_slider/slider_twist.png",(w-300,h-30),(10,27),0,0.4,defaultvol,volume_rail)
+main_menu_sprites.add(volume_rail)
+main_menu_sprites.add(volume_twist)
+in_game_sprites.add(volume_rail)
+in_game_sprites.add(volume_twist)
+
 title=pg.font.SysFont("arial",72)
 titletext=title.render("TEST MENU",True,(0,0,255))
 
 main_menu_bg_or=pg.image.load("picture/back_ground/main_menu_bg.png")
 main_menu_bg_or.convert()
 mainMenuBg=pg.transform.scale(main_menu_bg_or.convert_alpha(),(w,h))
+pg.mixer.music.load("voice/soundtrack/red_sun_in_the_sky.wav")#mainMenuBgm
+defaultvol=0.2
+pg.mixer.music.set_volume(defaultvol)
+pg.mixer.music.play(loops=-1, fade_ms=1500)
 def main_menu():
     screen.blit(mainMenuBg,(0,0))
     screen.blit(titletext,(100,100))
     main_menu_sprites.update()
     main_menu_sprites.draw(screen)
+    pg.mixer.music.set_volume(volume_twist.current_val)
 
 in_game_bg_or=pg.image.load("picture/back_ground/in_game_bg.png")
 in_game_bg_or.convert()
@@ -198,8 +236,6 @@ def in_game():
     screen.blit(inGameBg,(0,0))
     in_game_sprites.update()
     in_game_sprites.draw(screen)
-    
-
 
 #main loop
 running=True
@@ -210,14 +246,14 @@ while running:
     for event in pg.event.get():
         if event.type==pg.QUIT:
             running=False
-    all_sprites.update()
+    
     if game_state == "main_menu":
         main_menu()
         if sybau.ispress:
             game_state = "in_game"
     elif game_state == "in_game":
         in_game()
-    all_sprites.draw(screen)
+    
     if exit.ispress:
         running = False 
     pg.display.update()
