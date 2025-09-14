@@ -85,7 +85,7 @@ class sliderTwistObject(pg.sprite.Sprite):
         self.min_val=min_val
         self.max_val=max_val
         self.current_val=default_val
-        self.isdrag=False
+        #self.isdrag=False
         self.last_press=False
         self.image=pg.transform.scale(pg.image.load(picture_path).convert_alpha(), size)
         self.rect=self.image.get_rect(center=center)
@@ -94,7 +94,7 @@ class sliderTwistObject(pg.sprite.Sprite):
         maxx=self.rail.maxx
         mouse_pos = pg.mouse.get_pos()
         mouse_pressed = pg.mouse.get_pressed()[0]
-        if mouse_pressed:
+        '''if mouse_pressed:
             self.last_press=True
         else:
             self.last_press=False
@@ -110,8 +110,12 @@ class sliderTwistObject(pg.sprite.Sprite):
         elif not self.rect.collidepoint(mouse_pos) and not self.last_press:
             self.isdrag=False
             if mouse_pressed:
-                self.last_press=True
-
+                self.last_press=True'''
+        if mouse_pressed:
+            if self.rect.collidepoint(mouse_pos):
+                self.isdrag=True
+        else:
+            self.isdrag=False
         #move logic
         if self.isdrag:
             self.rect.centerx = mouse_pos[0]
