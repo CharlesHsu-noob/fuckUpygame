@@ -12,6 +12,10 @@ bg=bg.convert()
 bg.fill((0,0,0)) # black
 pressKeyQueue=[]
 
+# --- 為了跨平台相容性而進行的路徑設定 ---
+script_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.dirname(script_dir)
+
 # --- Sprite Groups ---
 main_menu_sprites = pg.sprite.Group()
 in_game_sprites = pg.sprite.Group()
@@ -235,56 +239,56 @@ class mapObject(pg.sprite.Sprite):
         if self.rect.bottom<h/2+playerh/2:
             self.rect.bottom=h/2+playerh/2
 
-mrbeast=moveObject("../picture/MrBeast.png",(300,550),(200,130),7,False)
+mrbeast=moveObject(os.path.join(base_dir, "picture", "MrBeast.png"),(300,550),(200,130),7,False)
 main_menu_sprites.add(mrbeast)
-milk=moveObject("../picture/milkdragon.png",(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
+milk=moveObject(os.path.join(base_dir, "picture", "milkdragon.png"),(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
 main_menu_sprites.add(milk)
 
-sybau_paths=["../picture/sybau/sybau1.png",
-             "../picture/sybau/sybau2.png",
-             "../picture/sybau/sybau3.png"]
+sybau_paths=[os.path.join(base_dir, "picture", "sybau", "sybau1.png"),
+             os.path.join(base_dir, "picture", "sybau", "sybau2.png"),
+             os.path.join(base_dir, "picture", "sybau", "sybau3.png")]
 sybau=buttonObject(sybau_paths,(200,325),(200,200))
 main_menu_sprites.add(sybau)
-exit_paths=["../picture/exit/exit1.png",
-            "../picture/exit/exit2.png",
-            "../picture/exit/exit3.png"]
+exit_paths=[os.path.join(base_dir, "picture", "exit", "exit1.png"),
+            os.path.join(base_dir, "picture", "exit", "exit2.png"),
+            os.path.join(base_dir, "picture", "exit", "exit3.png")]
 exit=buttonObject(exit_paths,(w-60,h-30),(105,45))
 main_menu_sprites.add(exit)
 in_game_sprites.add(exit)
 transition_omega=2
 transition_d_scale=0.1
-sybau_transition=pg.image.load("../picture/sybau/sybau3.png").convert_alpha()
+sybau_transition=pg.image.load(os.path.join(base_dir, "picture", "sybau", "sybau3.png")).convert_alpha()
 sybau_transition=pg.transform.scale(sybau_transition,(200,200))
 
-kingnom_paths=["../picture/kingnom/kingnom_stand1.png",
-             "../picture/kingnom/kingnom_stand2.png"]
+kingnom_paths=[os.path.join(base_dir, "picture", "kingnom", "kingnom_stand1.png"),
+             os.path.join(base_dir, "picture", "kingnom", "kingnom_stand2.png")]
 kingnom_move_paths=[
-    "../picture/kingnom/kingnom_move1.png",
-    "../picture/kingnom/kingnom_move2.png"
+    os.path.join(base_dir, "picture", "kingnom", "kingnom_move1.png"),
+    os.path.join(base_dir, "picture", "kingnom", "kingnom_move2.png")
 ]
 kingnom=characterObject(kingnom_paths,kingnom_move_paths,(w/2,h/2),(110,125))
 #in_game_sprites.add(kingnom)
 
 defaultvol=0.2
-volume_rail=sliderRailObject("../picture/sound_slider/slider_rail.png",(w-300,h-30),(300,10))
-volume_twist=sliderTwistObject("../picture/sound_slider/slider_twist.png",(w-300,h-30),(10,27),0,0.4,defaultvol,volume_rail)
+volume_rail=sliderRailObject(os.path.join(base_dir, "picture", "sound_slider", "slider_rail.png"),(w-300,h-30),(300,10))
+volume_twist=sliderTwistObject(os.path.join(base_dir, "picture", "sound_slider", "slider_twist.png"),(w-300,h-30),(10,27),0,0.4,defaultvol,volume_rail)
 main_menu_sprites.add(volume_rail)
 main_menu_sprites.add(volume_twist)
 in_game_sprites.add(volume_rail)
 in_game_sprites.add(volume_twist)
 
-title=pg.font.Font("../font/Sacramento-Regular.ttf", 65)
+title=pg.font.Font(os.path.join(base_dir, "font", "Sacramento-Regular.ttf"), 65)
 titletext=title.render("KINGNOM's big adventure",True,(0,200,200))
-titleZH=pg.font.Font("../font/bpm/BpmfZihiSerif-Regular.ttf",40)
+titleZH=pg.font.Font(os.path.join(base_dir, "font", "bpm", "BpmfZihiSerif-Regular.ttf"),40)
 titleZHtext=titleZH.render("金農的大冒險",True,(255,200,200))
 volvalue=0
 vol_value=pg.font.SysFont("times new roman",20)
 vol_valuetext=vol_value.render(str(volvalue),True,(255,255,255))
 
-main_menu_bg_or=pg.image.load("../picture/back_ground/main_menu_bg.png")
+main_menu_bg_or=pg.image.load(os.path.join(base_dir, "picture", "back_ground", "main_menu_bg.png"))
 main_menu_bg_or.convert()
 mainMenuBg=pg.transform.scale(main_menu_bg_or.convert_alpha(),(w,h))
-pg.mixer.music.load("../voice/soundtrack/red_sun_in_the_sky.wav")#mainMenuBgm
+pg.mixer.music.load(os.path.join(base_dir, "voice", "soundtrack", "red_sun_in_the_sky.wav"))#mainMenuBgm
 defaultvol=0.2
 pg.mixer.music.set_volume(defaultvol)
 pg.mixer.music.play(loops=-1, fade_ms=1500)
@@ -300,7 +304,7 @@ def main_menu():
     pg.mixer.music.set_volume(volume_twist.current_val)
 
 
-inGameBg=mapObject("../picture/back_ground/map2.png",(w/2,h/2),(4160,3760))
+inGameBg=mapObject(os.path.join(base_dir, "picture", "back_ground", "map2.png"),(w/2,h/2),(4160,3760))
 def in_game(pressKeyQueue):
     #screen.blit(inGameBg.image,inGameBg.rect)
     in_game_sprites.update()
