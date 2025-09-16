@@ -19,6 +19,7 @@ base_dir = os.path.dirname(script_dir)
 # --- Sprite Groups ---
 main_menu_sprites = pg.sprite.Group()
 in_game_sprites = pg.sprite.Group()
+pause_sprites = pg.sprite.Group()
 #map_sprites = pg.sprite.Group()
 
 class moveObject(pg.sprite.Sprite):
@@ -279,6 +280,20 @@ pg.mixer.music.load(os.path.join(base_dir, "voice", "soundtrack", "red_sun_in_th
 defaultvol=0.2
 pg.mixer.music.set_volume(defaultvol)
 pg.mixer.music.play(loops=-1, fade_ms=1500)
+
+global is_pause
+is_pause=False
+pause_bg_or=pg.image.load(os.path.join(base_dir,"picture","back_ground","president_mao.png")).convert_alpha()
+pause_bg=pg.transform.scale(pause_bg_or,(w,h))
+pause_bg_alpha=128
+pause_bg.set_alpha(pause_bg_alpha)
+pause_exit=buttonObject(exit_paths,(w/2,h-200),(105,45))
+pause_sprites.add(pause_exit)
+def pause():
+    is_pause=True
+    screen.blit(pause_bg,(0,0))
+    pause_sprites.update()
+    pause_sprites.draw(screen)
 def main_menu():
     screen.blit(mainMenuBg,(0,0))
     screen.blit(titletext,(100,100))
@@ -351,7 +366,14 @@ while running:
     for event in pg.event.get():
         if event.type==pg.QUIT:
             running=False
-         # 偵測按鍵事件，並更新按鍵列表
+        #偵測暫停
+        if event.type==pg.KEYDOWN:
+            if event.key==pg.K_ESCAPE:
+                if not is_pause:
+                    pause()
+                elif is_pause:
+                    is_pause=False
+        # 偵測按鍵事件，並更新按鍵列表
         if event.type == pg.KEYDOWN:
             # 確保同一個鍵不會被重複加入
             if event.key in [pg.K_w, pg.K_a, pg.K_s, pg.K_d]:
@@ -361,7 +383,7 @@ while running:
         if event.type == pg.KEYUP:
             if event.key in pressKeyQueue:
                 pressKeyQueue.remove(event.key)
-    
+
     if game_state == "main_menu":
         main_menu()
         if sybau.ispress:
