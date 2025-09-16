@@ -89,12 +89,12 @@ def go_back():
     current_page = "main"
 
 # ===== 建立按鈕 =====
-load_button = Button("loading", 200, 100, 200, 60, on_load)
-credits_button = Button("credits", 200, 200, 200, 60, show_credits)
-back_button = Button("return", 200, 300, 200, 60, go_back)
+load_button = Button("loading", 775, 440, 100, 60, on_load)
+credits_button = Button("credits", 1120, 500, 100, 60, show_credits)
+back_button = Button("return", 200, 300, 100, 60, go_back)
 
 # ===== 名單 =====
-credits_list = ["Leo", "Daniel", "Dylan", "Charles"]
+credits_list = ["Bob", "Daniel", "Dylan", "Charles"]
 
 # ===== 遊戲迴圈 =====
 running = True
