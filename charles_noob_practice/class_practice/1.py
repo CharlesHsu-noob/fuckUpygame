@@ -1,0 +1,13 @@
+list1=[]
+list1.append('a')
+print(list1)
+list1.append('b')
+print(list1)
+list1.append('c')
+print(list1)
+list1.remove('a')
+print(list1)
+list1.remove('b')
+print(list1)
+list1.remove('c')
+print(list1)
