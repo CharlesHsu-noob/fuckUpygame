@@ -171,31 +171,6 @@ class characterObject(pg.sprite.Sprite):
         self.is_move=False
         dx=0
         dy=0
-        '''keys=pg.key.get_pressed()
-        if keys[pg.K_w] and self.rect.top>0 and not akey_ispress:
-            #self.rect.y-=self.v
-            dy+=self.v
-            self.is_move=True
-            self.flipy=1
-            akey_ispress=True
-        if keys[pg.K_s] and self.rect.bottom<h and not akey_ispress:
-            #self.rect.y+=self.v
-            dy-=self.v
-            self.is_move=True
-            self.flipy=0
-            akey_ispress=True
-        if keys[pg.K_a] and self.rect.left>0 and not akey_ispress:
-            #self.rect.x-=self.v
-            dx-=self.v
-            self.is_move=True
-            self.flipx=0
-            akey_ispress=True
-        if keys[pg.K_d] and self.rect.right<w and not akey_ispress:
-            #self.rect.x+=self.v
-            dx+=self.v
-            self.is_move=True
-            self.flipx=1
-            akey_ispress=True'''
         # 如果列表中有按鍵，就處理最新按下的那個
         if pressKeyQueue:
             latest_key = pressKeyQueue[-1] # 獲取列表最後一個元素
@@ -321,6 +296,7 @@ def in_game(pressKeyQueue):
     #screen.blit(inGameBg.image,inGameBg.rect)
     in_game_sprites.update()
     kingnom.update(pressKeyQueue)
+    #AI
     #2. 將角色的世界座標限制在地圖範圍內
     map_width, map_height = inGameBg.rect.width, inGameBg.rect.height
     char_half_w = kingnom.rect.width / 2
@@ -356,7 +332,7 @@ def in_game(pressKeyQueue):
     # 6. 根據攝影機位置和角色的世界座標，計算角色在螢幕上的最終位置
     kingnom.rect.centerx = kingnom.map_x - camera_x
     kingnom.rect.centery = kingnom.map_y - camera_y
-
+    #AI
     screen.blit(inGameBg.image,inGameBg.rect)
     in_game_sprites.draw(screen)
     screen.blit(kingnom.image,kingnom.rect)
