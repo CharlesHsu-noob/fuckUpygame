@@ -26,8 +26,9 @@ def main_menu():
 
 # 字體
 font = pg.font.SysFont(None, 36)
+credits_font = pg.font.SysFont(None, 48)
 
-# 玩家資料
+# 玩家資料與存檔檔案
 player_data = {"score": 0, "level": 1}
 save_file = "save.json"
 
@@ -47,63 +48,103 @@ class Button:
         self.callback = callback
         self.color_normal = (100, 200, 100)
         self.color_hover = (150, 250, 150)
-        self.color_click = (50, 150, 50)  # 點擊時顏色
+        self.color_click = (50, 150, 50)
         self.is_pressed = False
 
     def draw(self, screen):
         mouse_pos = pg.mouse.get_pos()
-
         if self.is_pressed:
             color = self.color_click
         elif self.rect.collidepoint(mouse_pos):
             color = self.color_hover
         else:
             color = self.color_normal
-
         pg.draw.rect(screen, color, self.rect, border_radius=10)
-        text_surface = font.render(self.text, True, (0, 0, 0))
+        text_surface = font.render(self.text, True, (0,0,0))
         text_rect = text_surface.get_rect(center=self.rect.center)
         screen.blit(text_surface, text_rect)
 
     def handle_event(self, event):
-        if event.type == pg.MOUSEBUTTONDOWN:
-            if self.rect.collidepoint(event.pos):
-                self.is_pressed = True
-
+        if event.type == pg.MOUSEBUTTONDOWN and self.rect.collidepoint(event.pos):
+            self.is_pressed = True
         elif event.type == pg.MOUSEBUTTONUP:
             if self.is_pressed and self.rect.collidepoint(event.pos):
                 self.callback()
             self.is_pressed = False
 
-# ===== 讀取功能 =====
+# ===== 頁面狀態 =====
+current_page = "main"  # main 或 credits
+
+# ===== 功能 =====
 def on_load():
     global player_data
     player_data = load_game()
     print("讀取成功：", player_data)
 
-# 建立「讀取」按鈕
-load_button = Button("loading", 775, 440, 100, 60, on_load)
+def show_credits():
+    global current_page, credits_y
+    current_page = "credits"
+    credits_y = h  # 重新設定滾動起點
 
-# 遊戲迴圈
+def go_back():
+    global current_page
+    current_page = "main"
+
+# ===== 建立按鈕 =====
+load_button = Button("loading", 775, 440, 100, 60, on_load)
+credits_button = Button("credits", 1120, 500, 100, 60, show_credits)
+back_button = Button("return", 50, h - 100, 120, 60, go_back)
+
+# ===== 名單 =====
+credits_list = ["Bob", "Daniel", "Dylan", "Charles", "Sean"]
+
+# ===== Credits 滾動參數 =====
+credits_y = h
+scroll_speed = 0.4  # 滾動速度 (越大越快)
+
+# ===== 遊戲迴圈 =====
 running = True
 while running:
     screen.fill((220, 220, 220))
     main_menu()
-    # 顯示玩家資料
-    info = font.render(f"Score: {player_data['score']}  Level: {player_data['level']}", True, (0, 0, 0))
-    screen.blit(info, (150, 80))
-
-    # 畫按鈕
-    load_button.draw(screen)
-
     for event in pg.event.get():
         if event.type == pg.QUIT:
             running = False
-        load_button.handle_event(event)
+        if current_page == "main":
+            load_button.handle_event(event)
+            credits_button.handle_event(event)
+        elif current_page == "credits":
+            back_button.handle_event(event)
+
+    if current_page == "main":
+        # 顯示玩家資料
+        info = font.render(f"Score: {player_data['score']}  Level: {player_data['level']}", True, (0,0,0))
+        screen.blit(info, (150, 50))
+        # 畫按鈕
+        load_button.draw(screen)
+        credits_button.draw(screen)
+
+    elif current_page == "credits":
+        # 半透明背景
+        overlay = pg.Surface((w, h))
+        overlay.set_alpha(180)
+        overlay.fill((255, 255, 255))
+        screen.blit(overlay, (0, 0))
+
+        # 顯示滾動名單
+        for i, name in enumerate(credits_list):
+            text_surface = credits_font.render(name, True, (0,0,0))
+            screen.blit(text_surface, (w//2 - text_surface.get_width()//2, credits_y + i*60))
+
+        # 更新滾動位置
+        credits_y -= scroll_speed
+        if credits_y + len(credits_list)*60 < 0:
+            credits_y = h  # 循環滾動
+
+        # 回主選單按鈕
+        back_button.draw(screen)
 
     pg.display.flip()
-
-
 
 pg.quit()
 sys.exit()
