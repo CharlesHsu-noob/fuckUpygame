@@ -237,11 +237,14 @@ main_menu_sprites.add(milk)
 sybau_paths=[os.path.join(base_dir, "picture", "sybau", "sybau1.png"),
              os.path.join(base_dir, "picture", "sybau", "sybau2.png"),
              os.path.join(base_dir, "picture", "sybau", "sybau3.png")]
-sybau=buttonObject(sybau_paths,(200,325),(200,200))
-main_menu_sprites.add(sybau)
+
 exit_paths=[os.path.join(base_dir, "picture", "exit", "exit1.png"),
             os.path.join(base_dir, "picture", "exit", "exit2.png"),
             os.path.join(base_dir, "picture", "exit", "exit3.png")]
+
+back_paths=[os.path.join(base_dir, "picture", "return", "return1.png"),
+            os.path.join(base_dir, "picture", "return", "return2.png"),
+            os.path.join(base_dir, "picture", "return", "return3.png")]
 
 transition_omega=2
 transition_d_scale=0.1
@@ -295,6 +298,8 @@ pause_bg_alpha=100
 pause_bg.set_alpha(pause_bg_alpha)
 pause_exit=buttonObject(exit_paths,(w/2,h-200),(105,45))
 pause_sprites.add(pause_exit)
+pause_back=buttonObject(back_paths,center=(w/2-100,h-200),size=(150,150))
+pause_sprites.add(pause_back)
 def pause_menu(global_bg):
     screen.blit(global_bg,(0,0))
     screen.blit(pause_bg,(0,0))
@@ -307,6 +312,9 @@ title=pg.font.Font(os.path.join(base_dir, "font", "Sacramento-Regular.ttf"), 65)
 titletext=title.render("KINGNOM's big adventure",True,(0,200,200))
 titleZH=pg.font.Font(os.path.join(base_dir, "font", "bpm", "BpmfZihiSerif-Regular.ttf"),40)
 titleZHtext=titleZH.render("金農的大冒險",True,(255,200,200))
+
+sybau=buttonObject(sybau_paths,(200,325),(200,200))
+main_menu_sprites.add(sybau)
 def main_menu():
     screen.blit(mainMenuBg,(0,0))
     screen.blit(titletext,(100,100))
@@ -421,6 +429,12 @@ while running:
         if event.type == pg.KEYUP:
             if event.key in pressKeyQueue:
                 pressKeyQueue.remove(event.key)
+    
+    if pause_back.ispress:
+        is_pause=False
+        game_state=last_state
+        pause_back.ispress=False
+
     if game_state=="pause_menu":
         pause_menu(frozen)
     elif game_state == "main_menu":
