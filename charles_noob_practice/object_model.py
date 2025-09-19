@@ -196,14 +196,18 @@ class characterObject(pg.sprite.Sprite):
                 dx = self.v
                 self.is_move = True
                 self.flipx = 1
-        if self.move_index >= len(self.moves) * 2:
+        if self.move_index >= len(self.moves) * 7:
             self.move_index=0
         
         if not self.is_move:
             self.image=pg.transform.flip(self.images[0],self.flipx,self.flipy)
             self.move_index = 0
         else:
-            self.image=pg.transform.flip(self.moves[self.move_index // 2],self.flipx,self.flipy)
+            if self.move_index //4==0 or self.move_index//4==1:
+                real_index=0
+            elif self.move_index //4==2 or self.move_index//4==3:
+                real_index=1
+            self.image=pg.transform.flip(self.moves[real_index],self.flipx,self.flipy)
             self.move_index+=1
         self.distant=[dx,dy]
 
@@ -238,9 +242,7 @@ main_menu_sprites.add(sybau)
 exit_paths=[os.path.join(base_dir, "picture", "exit", "exit1.png"),
             os.path.join(base_dir, "picture", "exit", "exit2.png"),
             os.path.join(base_dir, "picture", "exit", "exit3.png")]
-exit=buttonObject(exit_paths,(w-60,h-30),(105,45))
-main_menu_sprites.add(exit)
-in_game_sprites.add(exit)
+
 transition_omega=2
 transition_d_scale=0.1
 sybau_transition=pg.image.load(os.path.join(base_dir, "picture", "sybau", "sybau3.png")).convert_alpha()
@@ -258,21 +260,12 @@ kingnom.map_x=4160/2
 kingnom.map_y=3760/2
 
 defaultvol=0.2
-volume_rail=sliderRailObject(os.path.join(base_dir, "picture", "sound_slider", "slider_rail.png"),(w-300,h-30),(300,10))
-volume_twist=sliderTwistObject(os.path.join(base_dir, "picture", "sound_slider", "slider_twist.png"),(w-300,h-30),(10,27),0,0.4,defaultvol,volume_rail)
-main_menu_sprites.add(volume_rail)
-main_menu_sprites.add(volume_twist)
-in_game_sprites.add(volume_rail)
-in_game_sprites.add(volume_twist)
+volume_rail=sliderRailObject(os.path.join(base_dir, "picture", "sound_slider", "slider_rail.png"),(w/2,h/2),(300,10))
+volume_twist=sliderTwistObject(os.path.join(base_dir, "picture", "sound_slider", "slider_twist.png"),(w/2,h/2),(10,27),0,0.4,defaultvol,volume_rail)
+pause_sprites.add(volume_rail)
+pause_sprites.add(volume_twist)
 
-title=pg.font.Font(os.path.join(base_dir, "font", "Sacramento-Regular.ttf"), 65)
-titletext=title.render("KINGNOM's big adventure",True,(0,200,200))
-titleZH=pg.font.Font(os.path.join(base_dir, "font", "bpm", "BpmfZihiSerif-Regular.ttf"),40)
-titleZHtext=titleZH.render("金農的大冒險",True,(255,200,200))
-volvalue=0
-vol_value=pg.font.SysFont("times new roman",20)
-vol_valuetext=vol_value.render(str(volvalue),True,(255,255,255))
-
+#music init
 main_menu_bg_or=pg.image.load(os.path.join(base_dir, "picture", "back_ground", "main_menu_bg.png"))
 main_menu_bg_or.convert()
 mainMenuBg=pg.transform.scale(main_menu_bg_or.convert_alpha(),(w,h))
@@ -281,30 +274,68 @@ defaultvol=0.2
 pg.mixer.music.set_volume(defaultvol)
 pg.mixer.music.play(loops=-1, fade_ms=1500)
 
-global is_pause
+#sound value text init
+vol_percent=0
+vol_font=pg.font.SysFont("times new roman",20)
+vol_text=vol_font.render(str(vol_percent),True,(255,255,255))
+def vol_update():
+    global vol_percent,vol_text,vol_font
+    vol_font = pg.font.Font(None, 30)
+    vol_percent=float(volume_twist.current_val*100)/0.4
+    display_text=f"Volume: {int(vol_percent)}"
+    display_surface=vol_font.render(display_text, True, (0, 255, 255))
+    screen.blit(display_surface,(w/2-270,h/2-8))
+    pg.mixer.music.set_volume(volume_twist.current_val)
+
+#pause init
 is_pause=False
 pause_bg_or=pg.image.load(os.path.join(base_dir,"picture","back_ground","president_mao.png")).convert_alpha()
 pause_bg=pg.transform.scale(pause_bg_or,(w,h))
-pause_bg_alpha=128
+pause_bg_alpha=100
 pause_bg.set_alpha(pause_bg_alpha)
 pause_exit=buttonObject(exit_paths,(w/2,h-200),(105,45))
 pause_sprites.add(pause_exit)
-def pause():
-    is_pause=True
+def pause_menu(global_bg):
+    screen.blit(global_bg,(0,0))
     screen.blit(pause_bg,(0,0))
     pause_sprites.update()
     pause_sprites.draw(screen)
+    vol_update()
+
+#main menu text init
+title=pg.font.Font(os.path.join(base_dir, "font", "Sacramento-Regular.ttf"), 65)
+titletext=title.render("KINGNOM's big adventure",True,(0,200,200))
+titleZH=pg.font.Font(os.path.join(base_dir, "font", "bpm", "BpmfZihiSerif-Regular.ttf"),40)
+titleZHtext=titleZH.render("金農的大冒險",True,(255,200,200))
 def main_menu():
     screen.blit(mainMenuBg,(0,0))
     screen.blit(titletext,(100,100))
     screen.blit(titleZHtext,(100,170))
     main_menu_sprites.update()
     main_menu_sprites.draw(screen)
-    volvalue=float(volume_twist.current_val*100)/0.4
-    vol_valuetext=vol_value.render(str(int(volvalue)),True,(255,255,255))
-    screen.blit(vol_valuetext,(w-490,h-40))
-    pg.mixer.music.set_volume(volume_twist.current_val)
+    #vol_update()
 
+transition_counter = 0 # <--轉場計數器
+def in_game_transition():
+    global transition_counter, game_state
+    # 在 transition 狀態下，每一幀執行一次動畫
+    if transition_counter < 50: 
+        current_scale = 1 + (transition_counter / 30) * 7
+        current_angle = transition_counter * 8
+        new_image = pg.transform.rotozoom(sybau_transition, current_angle, current_scale)
+        new_rect = new_image.get_rect(center=(sybau.rect.centerx, sybau.rect.centery))
+        alpha=255-(transition_counter*5)
+        new_image.set_alpha(alpha)
+        mainMenuBg.set_alpha(alpha)
+        kingnom.image.set_alpha(transition_counter*5)
+        screen.blit(inGameBg.image,inGameBg.rect)
+        screen.blit(kingnom.image,kingnom.rect)
+        screen.blit(mainMenuBg,(0,0))
+        screen.blit(new_image, new_rect)
+        transition_counter += 1
+    else:
+        game_state = "in_game"
+        transition_counter = 0
 
 inGameBg=mapObject(os.path.join(base_dir, "picture", "back_ground", "map2.png"),(w/2,h/2),(4160,3760))
 def in_game(pressKeyQueue):
@@ -351,12 +382,12 @@ def in_game(pressKeyQueue):
     screen.blit(inGameBg.image,inGameBg.rect)
     in_game_sprites.draw(screen)
     screen.blit(kingnom.image,kingnom.rect)
-    pg.mixer.music.set_volume(volume_twist.current_val)
+    #vol_update()
 
 #main loop
 running=True
 game_state = "main_menu"
-transition_counter = 0 # <--- 新增轉場計數器
+last_state=""
 
 # game loop
 running=True
@@ -370,9 +401,16 @@ while running:
         if event.type==pg.KEYDOWN:
             if event.key==pg.K_ESCAPE:
                 if not is_pause:
-                    pause()
-                elif is_pause:
-                    is_pause=False
+                    frozen=screen.copy()
+                
+                is_pause = not is_pause
+
+                if not game_state=="pause_menu":
+                    last_state=game_state
+                if is_pause:  
+                    game_state="pause_menu"
+                elif not is_pause:
+                    game_state=last_state
         # 偵測按鍵事件，並更新按鍵列表
         if event.type == pg.KEYDOWN:
             # 確保同一個鍵不會被重複加入
@@ -383,37 +421,18 @@ while running:
         if event.type == pg.KEYUP:
             if event.key in pressKeyQueue:
                 pressKeyQueue.remove(event.key)
-
-    if game_state == "main_menu":
+    if game_state=="pause_menu":
+        pause_menu(frozen)
+    elif game_state == "main_menu":
         main_menu()
         if sybau.ispress:
             game_state = "transition" 
             sybau.ispress = False 
-
     elif game_state == "transition":
-        # 在 transition 狀態下，每一幀執行一次動畫
-        if transition_counter < 50: 
-            current_scale = 1 + (transition_counter / 30) * 7
-            current_angle = transition_counter * 8
-            new_image = pg.transform.rotozoom(sybau_transition, current_angle, current_scale)
-            new_rect = new_image.get_rect(center=(sybau.rect.centerx, sybau.rect.centery))
-            alpha=255-(transition_counter*5)
-            new_image.set_alpha(alpha)
-            mainMenuBg.set_alpha(alpha)
-            kingnom.image.set_alpha(transition_counter*5)
-            screen.blit(inGameBg.image,inGameBg.rect)
-            screen.blit(kingnom.image,kingnom.rect)
-            screen.blit(mainMenuBg,(0,0))
-            screen.blit(new_image, new_rect)
-            transition_counter += 1
-        else:
-            game_state = "in_game"
-            transition_counter = 0
-
+        in_game_transition()
     elif game_state == "in_game":
         in_game(pressKeyQueue)
-    
-    if exit.ispress:
+    if pause_exit.ispress:
         running = False 
     pg.display.update()
 pg.quit()
