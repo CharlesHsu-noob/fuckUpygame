@@ -41,7 +41,7 @@ while running:
             waiting = True
             puss_time = time.time()
 
-        elif waiting and event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:    ### ← 移到這裡（event loop 裡）
+        elif waiting and event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
             waiting = False
             pointer_angle = 0.0
             direction = 1
