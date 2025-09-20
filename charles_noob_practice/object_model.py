@@ -19,8 +19,27 @@ base_dir = os.path.dirname(script_dir)
 # --- Sprite Groups ---
 main_menu_sprites = pg.sprite.Group()
 in_game_sprites = pg.sprite.Group()
+in_game_special=[]
 pause_sprites = pg.sprite.Group()
 #map_sprites = pg.sprite.Group()
+
+def collision_by_mask_with_mouse(image,rect):
+    mouse_pos = pg.mouse.get_pos()
+    mask=pg.mask.from_surface(image)
+    # 計算滑鼠相對於圖片的偏移量
+    offset_x = mouse_pos[0] - rect.x
+    offset_y = mouse_pos[1] - rect.y
+
+    if rect.collidepoint(mouse_pos):# 如果滑鼠在矩形內，檢查遮罩
+        # 這裡使用 try-except 是為了避免滑鼠座標超出遮罩範圍時的索引錯誤
+        try:
+            if mask.get_at((offset_x, offset_y)):
+                return True
+            else:
+                return False
+        except IndexError:
+            # 座標超出遮罩範圍，通常表示滑鼠在矩形邊緣
+            pass
 
 class moveObject(pg.sprite.Sprite):
     def __init__(self,picture_path,center,size,v,israndom):
@@ -60,7 +79,8 @@ class buttonObject(pg.sprite.Sprite):
         self.ispress = False
         mouse_pos = pg.mouse.get_pos()
         mouse_down = pg.mouse.get_pressed()[0]
-        is_mouse_over = self.rect.collidepoint(mouse_pos)
+        #is_mouse_over = self.rect.collidepoint(mouse_pos)
+        is_mouse_over=collision_by_mask_with_mouse(self.image,self.rect)
 
         if is_mouse_over:
             if mouse_down:
@@ -247,6 +267,22 @@ class mapObject(pg.sprite.Sprite):
         elif self.rect.right<w:
             self.rect.right=w'''
 
+class wallObject(pg.sprite.Sprite):
+    def __init__(self,picture_path,center,size):
+        super().__init__()
+        self.image=pg.transform.scale(pg.image.load(picture_path[0]).convert_alpha(),size)
+        #self.rect=self.image.get_rect(center=center)
+        self.map_x,self.map_y=center
+        self.image_w=self.image.get_width()
+        self.image_h=self.image.get_height()
+    def update(self,camera_x,camera_y):
+        self.need_deter=False#需要判定=false
+        #和npc一樣的判斷邏輯
+        if self.map_x-camera_x<=w+self.image_w/2 and self.map_y-camera_y<=h+self.image_h/2\
+            and self.map_x-camera_x>=0-self.image_w/2 and self.map_y-camera_y>=0-self.image_h/2:
+            self.need_deter=True
+            self.rect=self.image.get_rect(center=(self.map_x-camera_x,self.map_y-camera_y))
+
 mrbeast=moveObject(os.path.join(base_dir, "picture", "MrBeast.png"),(300,550),(200,130),7,False)
 main_menu_sprites.add(mrbeast)
 milk=moveObject(os.path.join(base_dir, "picture", "milkdragon.png"),(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
@@ -282,6 +318,11 @@ kingnom.map_y=3760/2#1880
 
 hitler_paths=[os.path.join(base_dir,"picture","hitler","hitler1.png")]
 hitler=npcObject(hitler_paths,(300,1880),(200,145))
+in_game_special.append(hitler)
+
+barrier1_path=[os.path.join(base_dir,"picture","barrier","barrier_wall.png")]
+barrier1=wallObject(barrier1_path,(250,1880),(40,220))
+in_game_special.append(barrier1)
 
 defaultvol=0.2
 volume_rail=sliderRailObject(os.path.join(base_dir, "picture", "sound_slider", "slider_rail.png"),(w/2,h/2),(300,10))
@@ -354,16 +395,16 @@ def in_game_transition():
     if transition_counter < 50: 
         current_scale = 1 + (transition_counter / 30) * 7
         current_angle = transition_counter * 8
-        new_image = pg.transform.rotozoom(sybau_transition, current_angle, current_scale)
-        new_rect = new_image.get_rect(center=(sybau.rect.centerx, sybau.rect.centery))
+        trans_image = pg.transform.rotozoom(sybau_transition, current_angle, current_scale)
+        trans_rect = trans_image.get_rect(center=(sybau.rect.centerx, sybau.rect.centery))
         alpha=255-(transition_counter*5)
-        new_image.set_alpha(alpha)
+        trans_image.set_alpha(alpha)
         mainMenuBg.set_alpha(alpha)
         kingnom.image.set_alpha(transition_counter*5)
         screen.blit(inGameBg.image,inGameBg.rect)
         screen.blit(kingnom.image,kingnom.rect)
         screen.blit(mainMenuBg,(0,0))
-        screen.blit(new_image, new_rect)
+        screen.blit(trans_image, trans_rect)
         transition_counter += 1
     else:
         game_state = "in_game"
@@ -412,14 +453,18 @@ def in_game(pressKeyQueue):
     kingnom.rect.centerx = kingnom.map_x - camera_x
     kingnom.rect.centery = kingnom.map_y - camera_y
     #AI
-
-    hitler.update(camera_x,camera_y)
+    for k in in_game_special:
+        k.update(camera_x,camera_y)
+    #hitler.update(camera_x,camera_y)
+    #barrier1.update(camera_x,camera_y)
 
     screen.blit(inGameBg.image,inGameBg.rect)
     in_game_sprites.draw(screen)
     if hitler.need_draw:
         screen.blit(hitler.image,hitler.rect)
     screen.blit(kingnom.image,kingnom.rect)
+    if barrier1.need_deter:
+        screen.blit(barrier1.image,barrier1.rect)
     #vol_update()
 
 #main loop
