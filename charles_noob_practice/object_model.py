@@ -211,6 +211,24 @@ class characterObject(pg.sprite.Sprite):
             self.move_index+=1
         self.distant=[dx,dy]
 
+class npcObject(pg.sprite.Sprite):
+    def __init__(self,picture_paths,center,size):
+        super().__init__()
+        self.images = []
+        for i in picture_paths:
+            self.images.append(pg.transform.scale(pg.image.load(i).convert_alpha(),size))
+        self.image=self.images[0]
+        #self.rect=self.image.get_rect(center=center)
+        self.map_x,self.map_y=center
+        self.image_w=self.image.get_width()
+        self.image_h=self.image.get_height()
+    def update(self,camera_x,camera_y):
+        self.need_draw=False
+        if self.map_x-camera_x<=w+self.image_w/2 and self.map_y-camera_y<=h+self.image_h/2\
+            and self.map_x-camera_x>=0-self.image_w/2 and self.map_y-camera_y>=0-self.image_h/2:
+            self.need_draw=True
+            self.rect=self.image.get_rect(center=(self.map_x-camera_x,self.map_y-camera_y))
+
 class mapObject(pg.sprite.Sprite):
     def __init__(self,picture_path,center,size):
         super().__init__()   
@@ -259,8 +277,11 @@ kingnom_move_paths=[
 ]
 kingnom=characterObject(kingnom_paths,kingnom_move_paths,(w/2,h/2),(110,125))
 #in_game_sprites.add(kingnom)
-kingnom.map_x=4160/2
-kingnom.map_y=3760/2
+kingnom.map_x=4160/2#2080
+kingnom.map_y=3760/2#1880
+
+hitler_paths=[os.path.join(base_dir,"picture","hitler","hitler1.png")]
+hitler=npcObject(hitler_paths,(300,1880),(200,145))
 
 defaultvol=0.2
 volume_rail=sliderRailObject(os.path.join(base_dir, "picture", "sound_slider", "slider_rail.png"),(w/2,h/2),(300,10))
@@ -308,17 +329,20 @@ def pause_menu(global_bg):
     vol_update()
 
 #main menu text init
-title=pg.font.Font(os.path.join(base_dir, "font", "Sacramento-Regular.ttf"), 65)
+title=pg.font.Font(os.path.join(base_dir, "font", "LavishlyYours-Regular.ttf"), 65)
 titletext=title.render("KINGNOM's big adventure",True,(0,200,200))
 titleZH=pg.font.Font(os.path.join(base_dir, "font", "bpm", "BpmfZihiSerif-Regular.ttf"),40)
 titleZHtext=titleZH.render("金農的大冒險",True,(255,200,200))
+hint=pg.font.Font(os.path.join(base_dir,"font","bpm","BpmfZihiSerif-Light.ttf"),20)
+hint_text=hint.render("點擊ESC鍵以暫停遊戲",True,(255,220,100))
 
 sybau=buttonObject(sybau_paths,(200,325),(200,200))
 main_menu_sprites.add(sybau)
 def main_menu():
     screen.blit(mainMenuBg,(0,0))
-    screen.blit(titletext,(100,100))
+    screen.blit(titletext,(100,80))
     screen.blit(titleZHtext,(100,170))
+    screen.blit(hint_text,(w-280,h-30))
     main_menu_sprites.update()
     main_menu_sprites.draw(screen)
     #vol_update()
@@ -346,16 +370,17 @@ def in_game_transition():
         transition_counter = 0
 
 inGameBg=mapObject(os.path.join(base_dir, "picture", "back_ground", "map2.png"),(w/2,h/2),(4160,3760))
+map_width, map_height = inGameBg.rect.width, inGameBg.rect.height
+char_half_w = kingnom.rect.width / 2
+char_half_h = kingnom.rect.height / 2
 def in_game(pressKeyQueue):
+    global w,h
+    global map_width, map_height, char_half_w, char_half_h
     #screen.blit(inGameBg.image,inGameBg.rect)
     in_game_sprites.update()
     kingnom.update(pressKeyQueue)
     #AI
     #2. 將角色的世界座標限制在地圖範圍內
-    map_width, map_height = inGameBg.rect.width, inGameBg.rect.height
-    char_half_w = kingnom.rect.width / 2
-    char_half_h = kingnom.rect.height / 2
-    
     if kingnom.map_x < char_half_w:
         kingnom.map_x = char_half_w
     if kingnom.map_x > map_width - char_half_w:
@@ -366,8 +391,8 @@ def in_game(pressKeyQueue):
         kingnom.map_y = map_height - char_half_h
 
     # 3. 根據角色的世界座標計算攝影機的理想位置 (目標是讓角色保持在螢幕中央)
-    camera_x = kingnom.map_x - w / 2
-    camera_y = kingnom.map_y - h / 2
+    camera_x = kingnom.map_x - w / 2#由 camera_x+w/2=map_x 推導而來
+    camera_y = kingnom.map_y - h / 2#由 camera_y+h/2=map_y 推導而來
 
     # 4. 將攝影機限制在地圖邊界內，避免顯示地圖外的黑色區域
     if camera_x < 0:
@@ -387,8 +412,13 @@ def in_game(pressKeyQueue):
     kingnom.rect.centerx = kingnom.map_x - camera_x
     kingnom.rect.centery = kingnom.map_y - camera_y
     #AI
+
+    hitler.update(camera_x,camera_y)
+
     screen.blit(inGameBg.image,inGameBg.rect)
     in_game_sprites.draw(screen)
+    if hitler.need_draw:
+        screen.blit(hitler.image,hitler.rect)
     screen.blit(kingnom.image,kingnom.rect)
     #vol_update()
 

@@ -17,7 +17,7 @@ bg = pg.Surface(screen.get_size())
 bg = bg.convert()
 
 # 視窗背景
-main_screen = pg.image.load(os.path.join(base_dir, "picture", "back_ground", "main_screen.webp"))
+main_screen = pg.image.load(os.path.join(base_dir, "picture", "back_ground", "formal_main_screen.webp"))
 main_screen.convert()
 mainMenuBg = pg.transform.scale(main_screen.convert_alpha(), (w, h))
 
