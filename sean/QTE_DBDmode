@@ -51,7 +51,7 @@ while running:
 
     if not waiting:
         pointer_angle += pointer_speed * dt * direction
-        if pointer_angle > math.radians(359.5):   ### ← 這裡 MISS 後直接進 waiting
+        if pointer_angle > math.radians(360):
             result = "MISS"
             waiting = True
 
