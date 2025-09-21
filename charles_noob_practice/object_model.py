@@ -18,14 +18,13 @@ base_dir = os.path.dirname(script_dir)
 
 # --- Sprite Groups ---
 main_menu_sprites = pg.sprite.Group()
-in_game_sprites = pg.sprite.Group()
+#in_game_sprites = pg.sprite.Group()
 in_game_special=[]
 pause_sprites = pg.sprite.Group()
 #map_sprites = pg.sprite.Group()
 
-def collision_by_mask_with_mouse(image,rect):
+def collision_by_mask_with_mouse(image,rect,mask):
     mouse_pos = pg.mouse.get_pos()
-    mask=pg.mask.from_surface(image)
     # 計算滑鼠相對於圖片的偏移量
     offset_x = mouse_pos[0] - rect.x
     offset_y = mouse_pos[1] - rect.y
@@ -42,10 +41,9 @@ def collision_by_mask_with_mouse(image,rect):
             pass
 
 class moveObject(pg.sprite.Sprite):
-    def __init__(self,picture_path,center,size,v,israndom):
+    def __init__(self,pre_load_pictures,center,size,v,israndom):
         super().__init__()
-        load_image=pg.image.load(picture_path).convert_alpha()
-        self.image=pg.transform.scale(load_image,size)
+        self.image=pg.transform.scale(pre_load_pictures,size)
         self.rect=self.image.get_rect(center=center)
         if israndom:
             self.pos=(random.randint(20,70))
@@ -64,23 +62,24 @@ class moveObject(pg.sprite.Sprite):
             self.dy*=-1
 
 class buttonObject(pg.sprite.Sprite):
-    def __init__(self,picture_paths,center,size):
+    def __init__(self,pre_load_pictures,center,size):
         super().__init__()
         self._is_held=False# 內部狀態：追蹤滑鼠是否正按在按鈕上
         self.ispress=False
         self.images = [
-            pg.transform.scale(pg.image.load(picture_paths[0]).convert_alpha(), size),
-            pg.transform.scale(pg.image.load(picture_paths[1]).convert_alpha(), size),
-            pg.transform.scale(pg.image.load(picture_paths[2]).convert_alpha(), size)
+            pg.transform.scale(pre_load_pictures[0], size),
+            pg.transform.scale(pre_load_pictures[1], size),
+            pg.transform.scale(pre_load_pictures[2], size)
         ]
         self.image=self.images[0]
         self.rect=self.image.get_rect(center=center)
+        self.mask=pg.mask.from_surface(self.image)
     def update(self):
         self.ispress = False
         mouse_pos = pg.mouse.get_pos()
         mouse_down = pg.mouse.get_pressed()[0]
         #is_mouse_over = self.rect.collidepoint(mouse_pos)
-        is_mouse_over=collision_by_mask_with_mouse(self.image,self.rect)
+        is_mouse_over=collision_by_mask_with_mouse(self.image,self.rect,self.mask)
 
         if is_mouse_over:
             if mouse_down:
@@ -100,16 +99,15 @@ class buttonObject(pg.sprite.Sprite):
             self._is_held = False
 
 class sliderRailObject(pg.sprite.Sprite):
-    def __init__(self,picture_path,center,size):
+    def __init__(self,pre_load_pictures,center,size):
         super().__init__()
-        load_image=pg.image.load(picture_path).convert_alpha()
-        self.image=pg.transform.scale(load_image,size)
+        self.image=pg.transform.scale(pre_load_pictures,size)
         self.rect=self.image.get_rect(center=center)
         self.minx=self.rect.left
         self.maxx=self.rect.right
 
 class sliderTwistObject(pg.sprite.Sprite):
-    def __init__(self,picture_path,center,size,min_val,max_val,default_val,rail):
+    def __init__(self,pre_load_pictures,center,size,min_val,max_val,default_val,rail):
         super().__init__()
         self.rail=rail
         self.min_val=min_val
@@ -117,7 +115,7 @@ class sliderTwistObject(pg.sprite.Sprite):
         self.current_val=default_val
         #self.isdrag=False
         self.last_press=False
-        self.image=pg.transform.scale(pg.image.load(picture_path).convert_alpha(), size)
+        self.image=pg.transform.scale(pre_load_pictures, size)
         self.rect=self.image.get_rect(center=center)
     def update(self):
         minx=self.rail.minx
@@ -159,7 +157,7 @@ class sliderTwistObject(pg.sprite.Sprite):
             self.current_val=self.min_val+(self.max_val-self.min_val)*(self.rect.centerx-minx)/(maxx-minx)
 
 class characterObject(pg.sprite.Sprite):
-    def __init__(self,picture_paths,move_paths,default_center,size):
+    def __init__(self,pre_load_pictures_stand,pre_load_pictures_move,default_center,size):
         super().__init__()
         self.map_x=0
         self.map_y=0
@@ -171,15 +169,15 @@ class characterObject(pg.sprite.Sprite):
         self.flipx=0
         self.flipy=0
         try:
-            for path in picture_paths:
-                self.images.append(pg.transform.scale(pg.image.load(path).convert_alpha(), size))
+            for surface in pre_load_pictures_stand:
+                self.images.append(pg.transform.scale(surface, size))
             self.image = self.images[0]
         except pg.error:
             self.image = pg.Surface(size)
             self.image.fill((0, 255, 0)) # Green placeholder
         try:
-            for path in move_paths:
-                self.moves.append(pg.transform.scale(pg.image.load(path).convert_alpha(),size))
+            for surface in pre_load_pictures_move:
+                self.moves.append(pg.transform.scale(surface,size))
         except pg.error:
             self.image = pg.Surface(size)
             self.image.fill((0, 255, 0)) # Green placeholder
@@ -190,8 +188,6 @@ class characterObject(pg.sprite.Sprite):
         self.move_character=False
         #akey_ispress=False
         self.is_move=False
-        dx=0
-        dy=0
         # 如果列表中有按鍵，就處理最新按下的那個
         if pressKeyQueue:
             latest_key = pressKeyQueue[-1] # 獲取列表最後一個元素
@@ -229,14 +225,13 @@ class characterObject(pg.sprite.Sprite):
                 real_index=1
             self.image=pg.transform.flip(self.moves[real_index],self.flipx,self.flipy)
             self.move_index+=1
-        self.distant=[dx,dy]
 
 class npcObject(pg.sprite.Sprite):
-    def __init__(self,picture_paths,center,size):
+    def __init__(self,pre_load_pictures,center,size):
         super().__init__()
         self.images = []
-        for i in picture_paths:
-            self.images.append(pg.transform.scale(pg.image.load(i).convert_alpha(),size))
+        for i in pre_load_pictures:
+            self.images.append(pg.transform.scale(i,size))
         self.image=self.images[0]
         #self.rect=self.image.get_rect(center=center)
         self.map_x,self.map_y=center
@@ -268,13 +263,14 @@ class mapObject(pg.sprite.Sprite):
             self.rect.right=w'''
 
 class wallObject(pg.sprite.Sprite):
-    def __init__(self,picture_path,center,size):
+    def __init__(self,pre_load_pictures,center,size):
         super().__init__()
-        self.image=pg.transform.scale(pg.image.load(picture_path[0]).convert_alpha(),size)
+        self.image=pg.transform.scale(pre_load_pictures[0],size)
         #self.rect=self.image.get_rect(center=center)
         self.map_x,self.map_y=center
         self.image_w=self.image.get_width()
         self.image_h=self.image.get_height()
+        self.mask=pg.mask.from_surface(self.image)
     def update(self,camera_x,camera_y):
         self.need_deter=False#需要判定=false
         #和npc一樣的判斷邏輯
@@ -283,11 +279,7 @@ class wallObject(pg.sprite.Sprite):
             self.need_deter=True
             self.rect=self.image.get_rect(center=(self.map_x-camera_x,self.map_y-camera_y))
 
-mrbeast=moveObject(os.path.join(base_dir, "picture", "MrBeast.png"),(300,550),(200,130),7,False)
-main_menu_sprites.add(mrbeast)
-milk=moveObject(os.path.join(base_dir, "picture", "milkdragon.png"),(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
-main_menu_sprites.add(milk)
-
+#path setup
 sybau_paths=[os.path.join(base_dir, "picture", "sybau", "sybau1.png"),
              os.path.join(base_dir, "picture", "sybau", "sybau2.png"),
              os.path.join(base_dir, "picture", "sybau", "sybau3.png")]
@@ -300,33 +292,70 @@ back_paths=[os.path.join(base_dir, "picture", "return", "return1.png"),
             os.path.join(base_dir, "picture", "return", "return2.png"),
             os.path.join(base_dir, "picture", "return", "return3.png")]
 
-transition_omega=2
-transition_d_scale=0.1
-sybau_transition=pg.image.load(os.path.join(base_dir, "picture", "sybau", "sybau3.png")).convert_alpha()
-sybau_transition=pg.transform.scale(sybau_transition,(200,200))
-
 kingnom_paths=[os.path.join(base_dir, "picture", "kingnom", "kingnom_stand1.png"),
              os.path.join(base_dir, "picture", "kingnom", "kingnom_stand2.png")]
+
 kingnom_move_paths=[
     os.path.join(base_dir, "picture", "kingnom", "kingnom_move1.png"),
     os.path.join(base_dir, "picture", "kingnom", "kingnom_move2.png")
 ]
-kingnom=characterObject(kingnom_paths,kingnom_move_paths,(w/2,h/2),(110,125))
+
+hitler_paths=[os.path.join(base_dir,"picture","hitler","hitler1.png")]
+
+barrier1_path=[os.path.join(base_dir,"picture","barrier","barrier_wall.png")]
+
+#pre load images as a dictionary
+#map and background is not included
+PICTURES={}
+#only one picture
+PICTURES["mrbeast"]=pg.image.load(os.path.join(base_dir, "picture", "MrBeast.png")).convert_alpha()
+PICTURES["milk"]=pg.image.load(os.path.join(base_dir, "picture", "milkdragon.png")).convert_alpha()
+PICTURES["slider_rail"]=pg.image.load(os.path.join(base_dir, "picture", "sound_slider", "slider_rail.png")).convert_alpha()
+PICTURES["slider_twist"]=pg.image.load(os.path.join(base_dir, "picture", "sound_slider", "slider_twist.png")).convert_alpha()
+#multiple pictures
+PICTURES["sybau1"]=pg.image.load(sybau_paths[0]).convert_alpha()
+PICTURES["sybau2"]=pg.image.load(sybau_paths[1]).convert_alpha()
+PICTURES["sybau3"]=pg.image.load(sybau_paths[2]).convert_alpha()
+PICTURES["exit1"]=pg.image.load(exit_paths[0]).convert_alpha()
+PICTURES["exit2"]=pg.image.load(exit_paths[1]).convert_alpha()
+PICTURES["exit3"]=pg.image.load(exit_paths[2]).convert_alpha()
+PICTURES["back1"]=pg.image.load(back_paths[0]).convert_alpha()
+PICTURES["back2"]=pg.image.load(back_paths[1]).convert_alpha()
+PICTURES["back3"]=pg.image.load(back_paths[2]).convert_alpha()
+PICTURES["kingnom_stand1"]=pg.image.load(kingnom_paths[0]).convert_alpha()
+PICTURES["kingnom_stand2"]=pg.image.load(kingnom_paths[1]).convert_alpha()
+PICTURES["kingnom_move1"]=pg.image.load(kingnom_move_paths[0]).convert_alpha()
+PICTURES["kingnom_move2"]=pg.image.load(kingnom_move_paths[1]).convert_alpha()
+PICTURES["hitler1"]=pg.image.load(hitler_paths[0]).convert_alpha()
+PICTURES["barrier_wall"]=pg.image.load(barrier1_path[0]).convert_alpha()
+
+#add object surface to *_pre_load arrays 
+exit_pre_load=[PICTURES["exit1"],PICTURES["exit2"],PICTURES["exit3"]]
+back_pre_load=[PICTURES["back1"],PICTURES["back2"],PICTURES["back3"]]
+sybau_pre_load=[PICTURES["sybau1"],PICTURES["sybau2"],PICTURES["sybau3"]]
+kingnom_stand_pre_load=[PICTURES["kingnom_stand1"],PICTURES["kingnom_stand2"]]
+kingnom_move_pre_load=[PICTURES["kingnom_move1"],PICTURES["kingnom_move2"]]
+hitler_pre_load=[PICTURES["hitler1"]]
+barrier1_pre_load=[PICTURES["barrier_wall"]]
+
+transition_omega=2
+transition_d_scale=0.1
+sybau_transition=pg.transform.scale(sybau_pre_load[2],(200,200))
+
+kingnom=characterObject(kingnom_stand_pre_load,kingnom_move_pre_load,(w/2,h/2),(110,125))
 #in_game_sprites.add(kingnom)
 kingnom.map_x=4160/2#2080
 kingnom.map_y=3760/2#1880
 
-hitler_paths=[os.path.join(base_dir,"picture","hitler","hitler1.png")]
-hitler=npcObject(hitler_paths,(300,1880),(200,145))
+hitler=npcObject(hitler_pre_load,(300,1880),(200,145))
 in_game_special.append(hitler)
 
-barrier1_path=[os.path.join(base_dir,"picture","barrier","barrier_wall.png")]
-barrier1=wallObject(barrier1_path,(250,1880),(40,220))
+barrier1=wallObject(barrier1_pre_load,(250,1880),(40,220))
 in_game_special.append(barrier1)
 
 defaultvol=0.2
-volume_rail=sliderRailObject(os.path.join(base_dir, "picture", "sound_slider", "slider_rail.png"),(w/2,h/2),(300,10))
-volume_twist=sliderTwistObject(os.path.join(base_dir, "picture", "sound_slider", "slider_twist.png"),(w/2,h/2),(10,27),0,0.4,defaultvol,volume_rail)
+volume_rail=sliderRailObject(PICTURES["slider_rail"],(w/2,h/2),(300,10))
+volume_twist=sliderTwistObject(PICTURES["slider_twist"],(w/2,h/2),(10,27),0,0.4,defaultvol,volume_rail)
 pause_sprites.add(volume_rail)
 pause_sprites.add(volume_twist)
 
@@ -358,9 +387,9 @@ pause_bg_or=pg.image.load(os.path.join(base_dir,"picture","back_ground","preside
 pause_bg=pg.transform.scale(pause_bg_or,(w,h))
 pause_bg_alpha=100
 pause_bg.set_alpha(pause_bg_alpha)
-pause_exit=buttonObject(exit_paths,(w/2,h-200),(105,45))
+pause_exit=buttonObject(exit_pre_load,(w/2,h-200),(105,45))
 pause_sprites.add(pause_exit)
-pause_back=buttonObject(back_paths,center=(w/2-100,h-200),size=(150,150))
+pause_back=buttonObject(back_pre_load,center=(w/2-100,h-200),size=(150,150))
 pause_sprites.add(pause_back)
 def pause_menu(global_bg):
     screen.blit(global_bg,(0,0))
@@ -377,7 +406,13 @@ titleZHtext=titleZH.render("金農的大冒險",True,(255,200,200))
 hint=pg.font.Font(os.path.join(base_dir,"font","bpm","BpmfZihiSerif-Light.ttf"),20)
 hint_text=hint.render("點擊ESC鍵以暫停遊戲",True,(255,220,100))
 
-sybau=buttonObject(sybau_paths,(200,325),(200,200))
+#main menu object init
+mrbeast=moveObject(PICTURES["mrbeast"],(300,550),(200,130),7,False)
+main_menu_sprites.add(mrbeast)
+milk=moveObject(PICTURES["milk"],(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
+main_menu_sprites.add(milk)
+
+sybau=buttonObject(sybau_pre_load,(200,325),(200,200))
 main_menu_sprites.add(sybau)
 def main_menu():
     screen.blit(mainMenuBg,(0,0))
@@ -418,7 +453,7 @@ def in_game(pressKeyQueue):
     global w,h
     global map_width, map_height, char_half_w, char_half_h
     #screen.blit(inGameBg.image,inGameBg.rect)
-    in_game_sprites.update()
+    #in_game_sprites.update()
     kingnom.update(pressKeyQueue)
     #AI
     #2. 將角色的世界座標限制在地圖範圍內
@@ -459,7 +494,7 @@ def in_game(pressKeyQueue):
     #barrier1.update(camera_x,camera_y)
 
     screen.blit(inGameBg.image,inGameBg.rect)
-    in_game_sprites.draw(screen)
+    #in_game_sprites.draw(screen)
     if hitler.need_draw:
         screen.blit(hitler.image,hitler.rect)
     screen.blit(kingnom.image,kingnom.rect)
