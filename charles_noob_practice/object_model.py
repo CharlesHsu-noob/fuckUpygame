@@ -23,7 +23,7 @@ in_game_special=[]
 pause_sprites = pg.sprite.Group()
 #map_sprites = pg.sprite.Group()
 
-def collision_by_mask_with_mouse(image,rect,mask):
+def collision_by_mask_with_mouse(rect,mask):
     mouse_pos = pg.mouse.get_pos()
     # 計算滑鼠相對於圖片的偏移量
     offset_x = mouse_pos[0] - rect.x
@@ -38,7 +38,8 @@ def collision_by_mask_with_mouse(image,rect,mask):
                 return False
         except IndexError:
             # 座標超出遮罩範圍，通常表示滑鼠在矩形邊緣
-            pass
+            return False
+    return False
 
 class moveObject(pg.sprite.Sprite):
     def __init__(self,pre_load_pictures,center,size,v,israndom):
@@ -79,7 +80,7 @@ class buttonObject(pg.sprite.Sprite):
         mouse_pos = pg.mouse.get_pos()
         mouse_down = pg.mouse.get_pressed()[0]
         #is_mouse_over = self.rect.collidepoint(mouse_pos)
-        is_mouse_over=collision_by_mask_with_mouse(self.image,self.rect,self.mask)
+        is_mouse_over=collision_by_mask_with_mouse(self.rect,self.mask)
 
         if is_mouse_over:
             if mouse_down:
@@ -122,23 +123,7 @@ class sliderTwistObject(pg.sprite.Sprite):
         maxx=self.rail.maxx
         mouse_pos = pg.mouse.get_pos()
         mouse_pressed = pg.mouse.get_pressed()[0]
-        '''if mouse_pressed:
-            self.last_press=True
-        else:
-            self.last_press=False
-        #isdrag logic:True
-        if self.rect.collidepoint(mouse_pos) and mouse_pressed:
-            self.isdrag=True
-            self.last_press=True
-        elif not self.rect.collidepoint(mouse_pos) and self.last_press and mouse_pressed:
-            self.isdrag=True
-        #isdrag logic:False
-        if self.rect.collidepoint(mouse_pos) and not self.last_press and not mouse_pressed:
-            self.isdrag=False
-        elif not self.rect.collidepoint(mouse_pos) and not self.last_press:
-            self.isdrag=False
-            if mouse_pressed:
-                self.last_press=True'''
+
         if mouse_pressed:
             if self.rect.collidepoint(mouse_pos):
                 self.isdrag=True
