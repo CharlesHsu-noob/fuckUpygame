@@ -6,7 +6,8 @@ base_dir = os.path.dirname(script_dir)
 #    sys.path.insert(0, ...) 將路徑添加到清單的最前面
 sys.path.insert(0, base_dir)
 
-from XddObjects import buttonObject
+#from XddObjects import buttonObject
+import XddObjects as xo
 #----------^--important--^------------
 
 pg.init()
@@ -15,7 +16,7 @@ screen = pg.display.set_mode((WIDTH, HEIGHT))
 clock = pg.time.Clock()
 
 # 建立「暫停」按鈕
-pause_btn = buttonObject(#<-------look this
+pause_btn = xo.buttonObject(#<-------look this
     [os.path.join(base_dir,"picture","NoWrongWay","NoWrongWay1.png"),
      os.path.join(base_dir,"picture","NoWrongWay","NoWrongWay2.png"),
      os.path.join(base_dir,"picture","NoWrongWay","NoWrongWay3.png")], 
