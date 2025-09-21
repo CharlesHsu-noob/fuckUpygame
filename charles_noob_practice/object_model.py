@@ -19,7 +19,8 @@ base_dir = os.path.dirname(script_dir)
 # --- Sprite Groups ---
 main_menu_sprites = pg.sprite.Group()
 #in_game_sprites = pg.sprite.Group()
-in_game_special=[]
+in_game_npc=[]
+in_game_wall=[]
 pause_sprites = pg.sprite.Group()
 #map_sprites = pg.sprite.Group()
 
@@ -28,7 +29,6 @@ def collision_by_mask_with_mouse(rect,mask):
     # 計算滑鼠相對於圖片的偏移量
     offset_x = mouse_pos[0] - rect.x
     offset_y = mouse_pos[1] - rect.y
-
     if rect.collidepoint(mouse_pos):# 如果滑鼠在矩形內，檢查遮罩
         # 這裡使用 try-except 是為了避免滑鼠座標超出遮罩範圍時的索引錯誤
         try:
@@ -40,6 +40,12 @@ def collision_by_mask_with_mouse(rect,mask):
             # 座標超出遮罩範圍，通常表示滑鼠在矩形邊緣
             return False
     return False
+
+def collision_by_mask_with_object(sprite1,sprite2):
+    if pg.sprite.collide_mask(sprite1,sprite2):
+        return True
+    else:
+        return False
 
 class moveObject(pg.sprite.Sprite):
     def __init__(self,picture_paths,center,size,v,israndom):
@@ -188,37 +194,45 @@ class characterObject(pg.sprite.Sprite):
         self.v=10
         self.rect=self.image.get_rect(center=default_center)
         self.is_move=False
-    def update(self,pressKeyQueue):
+        self.move_state="left"
+        self.mask=pg.mask.from_surface(self.image)
+    def update(self,pressKeyQueue,in_game_wall):
         self.move_character=False
-        #akey_ispress=False
         self.is_move=False
+        self.last_move_state=self.move_state
+        self.dx,self.dy=0,0
         # 如果列表中有按鍵，就處理最新按下的那個
         if pressKeyQueue:
             latest_key = pressKeyQueue[-1] # 獲取列表最後一個元素
             
             if latest_key == pg.K_w:
                 self.map_y-=self.v
-                dy = -self.v
                 self.is_move = True
                 self.flipy = 1
+                self.move_state="up"
+                self.dy=-self.v
             elif latest_key == pg.K_s:
                 self.map_y+=self.v
-                dy = self.v
                 self.is_move = True
                 self.flipy = 0
+                self.move_state="down"
+                self.dy=self.v
             elif latest_key == pg.K_a:
                 self.map_x-=self.v
-                dx = -self.v
                 self.is_move = True
                 self.flipx = 0
+                self.move_state="left"
+                self.dx=-self.v
             elif latest_key == pg.K_d:
                 self.map_x+=self.v
-                dx = self.v
                 self.is_move = True
                 self.flipx = 1
+                self.move_state="right"
+                self.dx=self.v
+        #update move index
         if self.move_index >= len(self.moves) * 7:
             self.move_index=0
-        
+        #change image
         if not self.is_move:
             self.image=pg.transform.flip(self.images[0],self.flipx,self.flipy)
             self.move_index = 0
@@ -229,6 +243,59 @@ class characterObject(pg.sprite.Sprite):
                 real_index=1
             self.image=pg.transform.flip(self.moves[real_index],self.flipx,self.flipy)
             self.move_index+=1
+        #update mask
+        if self.last_move_state!=self.move_state:
+            self.mask=pg.mask.from_surface(self.image)
+            self.last_move_state=self.move_state
+        # 1. 處理水平方向的移動和碰撞
+        '''if self.dx != 0:
+            # 創建一個只移動水平方向的「假設」矩形
+            temp_rect_x = self.rect.copy()
+            temp_rect_x.x += self.dx
+
+            # 手動遍歷牆壁群組進行碰撞檢查
+            has_collided = False
+            for wall in in_game_wall:
+                # 只檢查需要判斷的牆壁
+                if wall.need_deter:
+                    # 先做簡單的矩形碰撞判斷
+                    if temp_rect_x.colliderect(wall.rect):
+                        # 如果發生矩形碰撞，再做精確的像素級判斷
+                        # 這裡使用 pg.sprite.collide_mask，注意傳入的是 sprite 物件
+                        if pg.sprite.collide_mask(self, wall):
+                            has_collided = True
+                            # 調整角色位置以避免穿牆
+                            if self.dx > 0: # 往右移動
+                                self.rect.right = wall.rect.left
+                            elif self.dx < 0: # 往左移動
+                                self.rect.left = wall.rect.right
+                            break # 找到一個碰撞就夠了，不需要繼續檢查
+
+            if not has_collided:
+                # 如果沒有任何碰撞，則實際更新水平位置
+                self.rect.x += self.dx
+                self.map_x += self.dx
+
+        # 2. 處理垂直方向的移動和碰撞 (邏輯與水平方向類似)
+        if self.dy != 0:
+            temp_rect_y = self.rect.copy()
+            temp_rect_y.y += self.dy
+
+            has_collided = False
+            for wall in in_game_wall:
+                if wall.need_deter:
+                    if temp_rect_y.colliderect(wall.rect):
+                        if pg.sprite.collide_mask(self, wall):
+                            has_collided = True
+                            if self.dy > 0: # 往下移動
+                                self.rect.bottom = wall.rect.top
+                            elif self.dy < 0: # 往上移動
+                                self.rect.top = wall.rect.bottom
+                            break
+
+            if not has_collided:
+                self.rect.y += self.dy
+                self.map_y += self.dy'''
 
 class npcObject(pg.sprite.Sprite):
     def __init__(self,picture_paths,center,size):
@@ -287,6 +354,7 @@ class wallObject(pg.sprite.Sprite):
         self.image_w=self.image.get_width()
         self.image_h=self.image.get_height()
         self.mask=pg.mask.from_surface(self.image)
+        self.rect=self.image.get_rect(center=(10000,10000))#初始位置放在看不到的地方
         self.need_deter=False
     def update(self,camera_x,camera_y):
         self.need_deter=False#需要判定=false
@@ -296,7 +364,7 @@ class wallObject(pg.sprite.Sprite):
             self.need_deter=True
             self.rect=self.image.get_rect(center=(self.map_x-camera_x,self.map_y-camera_y))
 
-#path setup
+#path setup,excluding map and background
 #one path for one object
 volume_rail_path=os.path.join(base_dir,"picture","sound_slider","slider_rail.png")
 volume_twist_path=os.path.join(base_dir,"picture","sound_slider","slider_twist.png")
@@ -326,41 +394,81 @@ kingnom_move_paths=[
 hitler_paths=[os.path.join(base_dir,"picture","hitler","hitler1.png")]
 
 barrier1_paths=[os.path.join(base_dir,"picture","barrier","barrier_wall.png")]
-
-transition_omega=2
-transition_d_scale=0.1
-sybau_transition=pg.transform.scale(pg.image.load(sybau_paths[2]),(200,200))
-
-kingnom=characterObject(kingnom_stand_paths,kingnom_move_paths,(w/2,h/2),(110,125))
-#in_game_sprites.add(kingnom)
-kingnom.map_x=4160/2#2080
-kingnom.map_y=3760/2#1880
-
-hitler=npcObject(hitler_paths,(300,1880),(200,145))
-in_game_special.append(hitler)
-
-barrier1=wallObject(barrier1_paths,(250,1880),(40,220))
-in_game_special.append(barrier1)
-
+#----------------------------------------------------------------------------------------------
+#object setup
+#pause
 defaultvol=0.2
 volume_rail=sliderRailObject(volume_rail_path,(w/2,h/2),(300,10))
 volume_twist=sliderTwistObject(volume_twist_path,(w/2,h/2),(10,27),0,0.4,defaultvol,volume_rail)
 pause_sprites.add(volume_rail)
 pause_sprites.add(volume_twist)
+pause_exit=buttonObject(exit_paths,(w/2,h-200),(105,45))
+pause_sprites.add(pause_exit)
+pause_back=buttonObject(back_paths,center=(w/2-100,h-200),size=(150,150))
+pause_sprites.add(pause_back)
 
+#main menu
+mrbeast=moveObject(mrbeast_path,(300,550),(200,130),7,False)
+main_menu_sprites.add(mrbeast)
+milk=moveObject(milk_path,(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
+main_menu_sprites.add(milk)
+sybau=buttonObject(sybau_paths,(200,325),(200,200))
+main_menu_sprites.add(sybau)
+
+#transition
+transition_omega=2
+transition_d_scale=0.1
+sybau_transition=pg.transform.scale(pg.image.load(sybau_paths[2]),(200,200))
+
+#in game
+kingnom=characterObject(kingnom_stand_paths,kingnom_move_paths,(w/2,h/2),(110,125))
+kingnom.map_x=4160/2#2080
+kingnom.map_y=3760/2#1880
+char_half_w = kingnom.rect.width / 2
+char_half_h = kingnom.rect.height / 2
+    #in game npc
+hitler=npcObject(hitler_paths,(300,1880),(200,145))
+in_game_npc.append(hitler)
+    #in game wall
+barrier1=wallObject(barrier1_paths,(250,1880),(40,220))
+in_game_wall.append(barrier1)
+#----------------------------------------------------------------------------------------------
 #music init
-main_menu_bg_or=pg.image.load(os.path.join(base_dir, "picture", "back_ground", "main_menu_bg.png"))
-main_menu_bg_or.convert()
-mainMenuBg=pg.transform.scale(main_menu_bg_or.convert_alpha(),(w,h))
 pg.mixer.music.load(os.path.join(base_dir, "voice", "soundtrack", "red_sun_in_the_sky.wav"))#mainMenuBgm
 defaultvol=0.2
 pg.mixer.music.set_volume(defaultvol)
 pg.mixer.music.play(loops=-1, fade_ms=1500)
+#----------------------------------------------------------------------------------------------
+#map and background setup
+#pause
+pause_bg_or=pg.image.load(os.path.join(base_dir,"picture","back_ground","president_mao.png")).convert_alpha()
+pause_bg=pg.transform.scale(pause_bg_or,(w,h))
+pause_bg_alpha=100
+pause_bg.set_alpha(pause_bg_alpha)
+#main menu
+main_menu_bg_or=pg.image.load(os.path.join(base_dir, "picture", "back_ground", "main_menu_bg.png"))
+main_menu_bg_or.convert()
+mainMenuBg=pg.transform.scale(main_menu_bg_or.convert_alpha(),(w,h))
 
-#sound value text init
+#in game
+inGameBg=mapObject(os.path.join(base_dir, "picture", "back_ground", "map2.png"),(w/2,h/2),(4160,3760))
+map_width, map_height = inGameBg.rect.width, inGameBg.rect.height
+#----------------------------------------------------------------------------------------------
+#text setup
+#volume
 vol_percent=0
 vol_font=pg.font.SysFont("times new roman",20)
 vol_text=vol_font.render(str(vol_percent),True,(255,255,255))
+
+#main menu
+title=pg.font.Font(os.path.join(base_dir, "font", "LavishlyYours-Regular.ttf"), 65)
+titletext=title.render("KINGNOM's big adventure",True,(0,200,200))
+titleZH=pg.font.Font(os.path.join(base_dir, "font", "bpm", "BpmfZihiSerif-Regular.ttf"),40)
+titleZHtext=titleZH.render("金農的大冒險",True,(255,200,200))
+hint=pg.font.Font(os.path.join(base_dir,"font","bpm","BpmfZihiSerif-Light.ttf"),20)
+hint_text=hint.render("點擊ESC鍵以暫停遊戲",True,(255,220,100))
+#----------------------------------------------------------------------------------------------
+
 def vol_update():
     global vol_percent,vol_text,vol_font
     vol_font = pg.font.Font(None, 30)
@@ -372,14 +480,6 @@ def vol_update():
 
 #pause init
 is_pause=False
-pause_bg_or=pg.image.load(os.path.join(base_dir,"picture","back_ground","president_mao.png")).convert_alpha()
-pause_bg=pg.transform.scale(pause_bg_or,(w,h))
-pause_bg_alpha=100
-pause_bg.set_alpha(pause_bg_alpha)
-pause_exit=buttonObject(exit_paths,(w/2,h-200),(105,45))
-pause_sprites.add(pause_exit)
-pause_back=buttonObject(back_paths,center=(w/2-100,h-200),size=(150,150))
-pause_sprites.add(pause_back)
 def pause_menu(global_bg):
     screen.blit(global_bg,(0,0))
     screen.blit(pause_bg,(0,0))
@@ -387,22 +487,7 @@ def pause_menu(global_bg):
     pause_sprites.draw(screen)
     vol_update()
 
-#main menu text init
-title=pg.font.Font(os.path.join(base_dir, "font", "LavishlyYours-Regular.ttf"), 65)
-titletext=title.render("KINGNOM's big adventure",True,(0,200,200))
-titleZH=pg.font.Font(os.path.join(base_dir, "font", "bpm", "BpmfZihiSerif-Regular.ttf"),40)
-titleZHtext=titleZH.render("金農的大冒險",True,(255,200,200))
-hint=pg.font.Font(os.path.join(base_dir,"font","bpm","BpmfZihiSerif-Light.ttf"),20)
-hint_text=hint.render("點擊ESC鍵以暫停遊戲",True,(255,220,100))
-
-#main menu object init
-mrbeast=moveObject(mrbeast_path,(300,550),(200,130),7,False)
-main_menu_sprites.add(mrbeast)
-milk=moveObject(milk_path,(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
-main_menu_sprites.add(milk)
-
-sybau=buttonObject(sybau_paths,(200,325),(200,200))
-main_menu_sprites.add(sybau)
+#main menu init
 def main_menu():
     screen.blit(mainMenuBg,(0,0))
     screen.blit(titletext,(100,80))
@@ -412,6 +497,7 @@ def main_menu():
     main_menu_sprites.draw(screen)
     #vol_update()
 
+#transition init
 transition_counter = 0 # <--轉場計數器
 def in_game_transition():
     global transition_counter, game_state
@@ -434,17 +520,13 @@ def in_game_transition():
         game_state = "in_game"
         transition_counter = 0
 
-inGameBg=mapObject(os.path.join(base_dir, "picture", "back_ground", "map2.png"),(w/2,h/2),(4160,3760))
-map_width, map_height = inGameBg.rect.width, inGameBg.rect.height
-char_half_w = kingnom.rect.width / 2
-char_half_h = kingnom.rect.height / 2
 def in_game(pressKeyQueue):
+    global kingnom
     global w,h
     global map_width, map_height, char_half_w, char_half_h
     #screen.blit(inGameBg.image,inGameBg.rect)
     #in_game_sprites.update()
-    kingnom.update(pressKeyQueue)
-    #AI
+    kingnom.update(pressKeyQueue,in_game_wall)
     #2. 將角色的世界座標限制在地圖範圍內
     if kingnom.map_x < char_half_w:
         kingnom.map_x = char_half_w
@@ -459,7 +541,7 @@ def in_game(pressKeyQueue):
     camera_x = kingnom.map_x - w / 2#由 camera_x+w/2=map_x 推導而來
     camera_y = kingnom.map_y - h / 2#由 camera_y+h/2=map_y 推導而來
 
-    # 4. 將攝影機限制在地圖邊界內，避免顯示地圖外的黑色區域
+    #4.1 將攝影機限制在地圖邊界內，避免顯示地圖外的黑色區域
     if camera_x < 0:
         camera_x = 0
     if camera_x > map_width - w:
@@ -468,6 +550,22 @@ def in_game(pressKeyQueue):
         camera_y = 0
     if camera_y > map_height - h:
         camera_y = map_height - h
+    
+    for npc in in_game_npc:
+        npc.update(camera_x,camera_y)
+    for wall in in_game_wall:
+        wall.update(camera_x,camera_y)
+    for wall in in_game_wall:
+        if wall.need_deter:
+            if collision_by_mask_with_object(kingnom,wall):
+                if kingnom.move_state=="up":
+                    kingnom.map_y+=kingnom.v
+                elif kingnom.move_state=="down":
+                    kingnom.map_y-=kingnom.v
+                elif kingnom.move_state=="left":
+                    kingnom.map_x+=kingnom.v
+                elif kingnom.move_state=="right":
+                    kingnom.map_x-=kingnom.v
 
     # 5. 根據攝影機的位置，更新地圖的螢幕位置 (地圖的移動方向與攝影機相反)
     inGameBg.rect.x = -camera_x
@@ -476,11 +574,6 @@ def in_game(pressKeyQueue):
     # 6. 根據攝影機位置和角色的世界座標，計算角色在螢幕上的最終位置
     kingnom.rect.centerx = kingnom.map_x - camera_x
     kingnom.rect.centery = kingnom.map_y - camera_y
-    #AI
-    for k in in_game_special:
-        k.update(camera_x,camera_y)
-    #hitler.update(camera_x,camera_y)
-    #barrier1.update(camera_x,camera_y)
 
     screen.blit(inGameBg.image,inGameBg.rect)
     #in_game_sprites.draw(screen)
@@ -493,7 +586,7 @@ def in_game(pressKeyQueue):
 
 #main loop
 running=True
-game_state = "main_menu"
+game_state = "in_game" # "main_menu", "transition", "in_game", "pause_menu"
 last_state=""
 
 # game loop
