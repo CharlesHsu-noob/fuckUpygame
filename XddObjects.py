@@ -28,9 +28,19 @@ def collision_by_mask_with_mouse(rect,mask):
     return False
 
 class moveObject(pg.sprite.Sprite):
+<<<<<<< HEAD
     def __init__(self,pre_load_pictures,center,size,v,israndom):
         super().__init__()
         self.image=pg.transform.scale(pre_load_pictures,size)
+=======
+    def __init__(self,picture_paths,center,size,v,israndom):
+        super().__init__()
+        self.image=pg.transform.scale(
+            pg.image.load(
+                os.path.join(
+                    picture_paths)).convert_alpha(),
+            size)
+>>>>>>> 36a6e2b753d0e5e334a7dee741b89d6408ef1b71
         self.rect=self.image.get_rect(center=center)
         if israndom:
             self.pos=(random.randint(20,70))
@@ -54,9 +64,15 @@ class buttonObject(pg.sprite.Sprite):
         self._is_held=False# 內部狀態：追蹤滑鼠是否正按在按鈕上
         self.ispress=False
         self.images = [
+<<<<<<< HEAD
             pg.transform.scale(pre_load_pictures[0], size),
             pg.transform.scale(pre_load_pictures[1], size),
             pg.transform.scale(pre_load_pictures[2], size)
+=======
+            pg.transform.scale(pg.image.load(os.path.join(picture_paths[0])).convert_alpha(), size),
+            pg.transform.scale(pg.image.load(os.path.join(picture_paths[1])).convert_alpha(), size),
+            pg.transform.scale(pg.image.load(os.path.join(picture_paths[2])).convert_alpha(), size)
+>>>>>>> 36a6e2b753d0e5e334a7dee741b89d6408ef1b71
         ]
         self.image=self.images[0]
         self.rect=self.image.get_rect(center=center)
@@ -86,15 +102,29 @@ class buttonObject(pg.sprite.Sprite):
             self._is_held = False
 
 class sliderRailObject(pg.sprite.Sprite):
+<<<<<<< HEAD
     def __init__(self,pre_load_pictures,center,size):
         super().__init__()
         self.image=pg.transform.scale(pre_load_pictures,size)
+=======
+    def __init__(self,picture_paths,center,size):
+        super().__init__()
+        self.image=pg.transform.scale(
+            pg.image.load(
+                os.path.join(
+                    picture_paths)).convert_alpha(),
+            size)
+>>>>>>> 36a6e2b753d0e5e334a7dee741b89d6408ef1b71
         self.rect=self.image.get_rect(center=center)
         self.minx=self.rect.left
         self.maxx=self.rect.right
 
 class sliderTwistObject(pg.sprite.Sprite):
+<<<<<<< HEAD
     def __init__(self,pre_load_pictures,center,size,min_val,max_val,default_val,rail):
+=======
+    def __init__(self,picture_paths,center,size,min_val,max_val,default_val,rail):
+>>>>>>> 36a6e2b753d0e5e334a7dee741b89d6408ef1b71
         super().__init__()
         self.rail=rail
         self.min_val=min_val
@@ -102,13 +132,22 @@ class sliderTwistObject(pg.sprite.Sprite):
         self.current_val=default_val
         #self.isdrag=False
         self.last_press=False
+<<<<<<< HEAD
         self.image=pg.transform.scale(pre_load_pictures, size)
+=======
+        self.image=pg.transform.scale(
+            pg.image.load(
+                os.path.join(
+                    base_dir, picture_paths)).convert_alpha(),
+            size)
+>>>>>>> 36a6e2b753d0e5e334a7dee741b89d6408ef1b71
         self.rect=self.image.get_rect(center=center)
     def update(self):
         minx=self.rail.minx
         maxx=self.rail.maxx
         mouse_pos = pg.mouse.get_pos()
         mouse_pressed = pg.mouse.get_pressed()[0]
+<<<<<<< HEAD
         '''if mouse_pressed:
             self.last_press=True
         else:
@@ -126,6 +165,9 @@ class sliderTwistObject(pg.sprite.Sprite):
             self.isdrag=False
             if mouse_pressed:
                 self.last_press=True'''
+=======
+
+>>>>>>> 36a6e2b753d0e5e334a7dee741b89d6408ef1b71
         if mouse_pressed:
             if self.rect.collidepoint(mouse_pos):
                 self.isdrag=True
@@ -141,10 +183,16 @@ class sliderTwistObject(pg.sprite.Sprite):
                 self.rect.centerx = minx
             if self.rect.centerx > maxx:
                 self.rect.centerx = maxx
-            self.current_val=self.min_val+(self.max_val-self.min_val)*(self.rect.centerx-minx)/(maxx-minx)
+            self.current_val=self.min_val+\
+                            (self.max_val-self.min_val)*\
+                            (self.rect.centerx-minx)/(maxx-minx)
 
 class characterObject(pg.sprite.Sprite):
+<<<<<<< HEAD
     def __init__(self,pre_load_pictures_stand,pre_load_pictures_move,default_center,size):
+=======
+    def __init__(self,picture_paths_stand,picture_paths_move,default_center,size):
+>>>>>>> 36a6e2b753d0e5e334a7dee741b89d6408ef1b71
         super().__init__()
         self.map_x=0
         self.map_y=0
@@ -156,15 +204,30 @@ class characterObject(pg.sprite.Sprite):
         self.flipx=0
         self.flipy=0
         try:
+<<<<<<< HEAD
             for surface in pre_load_pictures_stand:
                 self.images.append(pg.transform.scale(surface, size))
+=======
+            for path in picture_paths_stand:
+                self.images.append(pg.transform.scale(
+                    pg.image.load(
+                        os.path.join(path)
+                        ).convert_alpha(),size))
+>>>>>>> 36a6e2b753d0e5e334a7dee741b89d6408ef1b71
             self.image = self.images[0]
         except pg.error:
             self.image = pg.Surface(size)
             self.image.fill((0, 255, 0)) # Green placeholder
         try:
+<<<<<<< HEAD
             for surface in pre_load_pictures_move:
                 self.moves.append(pg.transform.scale(surface,size))
+=======
+            for path in picture_paths_move:
+                self.moves.append(pg.transform.scale(
+                    pg.image.load(
+                        os.path.join(path)).convert_alpha(),size))
+>>>>>>> 36a6e2b753d0e5e334a7dee741b89d6408ef1b71
         except pg.error:
             self.image = pg.Surface(size)
             self.image.fill((0, 255, 0)) # Green placeholder
@@ -214,11 +277,21 @@ class characterObject(pg.sprite.Sprite):
             self.move_index+=1
 
 class npcObject(pg.sprite.Sprite):
+<<<<<<< HEAD
     def __init__(self,pre_load_pictures,center,size):
         super().__init__()
         self.images = []
         for i in pre_load_pictures:
             self.images.append(pg.transform.scale(i,size))
+=======
+    def __init__(self,picture_paths,center,size):
+        super().__init__()
+        self.images = []
+        for path in picture_paths:
+            self.images.append(pg.transform.scale(
+                pg.image.load(
+                    os.path.join(path)).convert_alpha(),size))
+>>>>>>> 36a6e2b753d0e5e334a7dee741b89d6408ef1b71
         self.image=self.images[0]
         #self.rect=self.image.get_rect(center=center)
         self.map_x,self.map_y=center
@@ -234,7 +307,11 @@ class npcObject(pg.sprite.Sprite):
 class mapObject(pg.sprite.Sprite):
     def __init__(self,picture_path,center,size):
         super().__init__()   
-        self.image=pg.transform.scale(pg.image.load(picture_path).convert_alpha(),size)
+        self.image=pg.transform.scale(
+            pg.image.load(
+                os.path.join(
+                    picture_path)).convert_alpha(),
+            size)
         self.rect=self.image.get_rect(center=center)
     def update(self):
         pass# deal in in_game()
@@ -250,14 +327,30 @@ class mapObject(pg.sprite.Sprite):
             self.rect.right=w'''
 
 class wallObject(pg.sprite.Sprite):
+<<<<<<< HEAD
     def __init__(self,pre_load_pictures,center,size):
         super().__init__()
         self.image=pg.transform.scale(pre_load_pictures[0],size)
+=======
+    def __init__(self,picture_paths,center,size):
+        super().__init__()
+        self.images = []
+        for path in picture_paths:
+            self.images.append(pg.transform.scale(
+                pg.image.load(
+                    os.path.join(path)
+                    ).convert_alpha(),size))
+        self.image=self.images[0]
+>>>>>>> 36a6e2b753d0e5e334a7dee741b89d6408ef1b71
         #self.rect=self.image.get_rect(center=center)
         self.map_x,self.map_y=center
         self.image_w=self.image.get_width()
         self.image_h=self.image.get_height()
         self.mask=pg.mask.from_surface(self.image)
+<<<<<<< HEAD
+=======
+        self.need_deter=False
+>>>>>>> 36a6e2b753d0e5e334a7dee741b89d6408ef1b71
     def update(self,camera_x,camera_y):
         self.need_deter=False#需要判定=false
         #和npc一樣的判斷邏輯
