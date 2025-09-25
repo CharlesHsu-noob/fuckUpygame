@@ -41,12 +41,6 @@ def collision_by_mask_with_mouse(rect,mask):
             return False
     return False
 
-def collision_by_mask_with_object(sprite1,sprite2):
-    if pg.sprite.collide_mask(sprite1,sprite2):
-        return True
-    else:
-        return False
-
 class moveObject(pg.sprite.Sprite):
     def __init__(self,picture_paths,center,size,v,israndom):
         super().__init__()
@@ -166,10 +160,6 @@ class characterObject(pg.sprite.Sprite):
         super().__init__()
         self.map_x=0
         self.map_y=0
-        self.last_map_x=self.map_x
-        self.last_map_y=self.map_y
-        self.screen_x=w/2
-        self.screen_y=h/2
         self.images = [] 
         self.moves=[]
         self.move_index=0
@@ -198,88 +188,66 @@ class characterObject(pg.sprite.Sprite):
         self.is_move=False
         self.move_state="left"
         self.mask=pg.mask.from_surface(self.image)
-        self.half_w=self.rect.width/2
-        self.half_h=self.rect.height/2
-    def update(self,pressKeyQueue,in_game_wall):
-        self.move_character=False
-        self.is_move=False
-        self.last_move_state=self.move_state
-        self.dx,self.dy=0,0
-        self.last_map_x=self.map_x
-        self.last_map_y=self.map_y
-        # 如果列表中有按鍵，就處理最新按下的那個
+        self.mask_rect=self.mask.get_rect(center=default_center)
+        self.half_w=self.mask_rect.width/2
+        self.half_h=self.mask_rect.height/2
+    def update(self,pressKeyQueue):
+        self.move_character = False
+        self.is_move = False
+        self.last_move_state = self.move_state
+        self.dx, self.dy = 0, 0
+
+        # 處理按鍵輸入
         if pressKeyQueue:
-            latest_key = pressKeyQueue[-1] # 獲取列表最後一個元素
+            latest_key = pressKeyQueue[-1]
             
             if latest_key == pg.K_w:
-                #self.map_y-=self.v
+                self.map_y-=self.v
+                self.dy = -self.v
+                self.move_state = "up"
                 self.is_move = True
                 self.flipy = 1
-                self.move_state="up"
-                self.dy=-self.v
             elif latest_key == pg.K_s:
-                #self.map_y+=self.v
+                self.map_y+=self.v
+                self.dy = self.v
+                self.move_state = "down"
                 self.is_move = True
                 self.flipy = 0
-                self.move_state="down"
-                self.dy=self.v
             elif latest_key == pg.K_a:
-                #self.map_x-=self.v
+                self.map_x-=self.v
+                self.dx = -self.v
+                self.move_state = "left"
                 self.is_move = True
                 self.flipx = 0
-                self.move_state="left"
-                self.dx=-self.v
             elif latest_key == pg.K_d:
-                #self.map_x+=self.v
+                self.map_x+=self.v
+                self.dx = self.v
+                self.move_state = "right"
                 self.is_move = True
                 self.flipx = 1
-                self.move_state="right"
-                self.dx=self.v
-        self.map_x+=self.dx
-        self.map_y+=self.dy
-        #update move index
+        
+        # 更新動畫
         if self.move_index >= len(self.moves) * 7:
-            self.move_index=0
-        #change image
+            self.move_index = 0
+            
         if not self.is_move:
-            self.image=pg.transform.flip(self.images[0],self.flipx,self.flipy)
+            self.image = pg.transform.flip(self.images[0], self.flipx, self.flipy)
             self.move_index = 0
         else:
-            if self.move_index //4==0 or self.move_index//4==1:
-                real_index=0
-            elif self.move_index //4==2 or self.move_index//4==3:
-                real_index=1
-            self.image=pg.transform.flip(self.moves[real_index],self.flipx,self.flipy)
-            self.move_index+=1
-        #update mask
-        if self.last_move_state!=self.move_state:
-            self.mask=pg.mask.from_surface(self.image)
+            if self.move_index // 4 == 0 or self.move_index // 4 == 1:
+                real_index = 0
+            elif self.move_index // 4 == 2 or self.move_index // 4 == 3:
+                real_index = 1
+            self.image = pg.transform.flip(self.moves[real_index], self.flipx, self.flipy)
+            self.move_index += 1
+
+        # 更新遮罩
+        if self.last_move_state != self.move_state:
+            self.mask = pg.mask.from_surface(self.image)
             self.rect=self.image.get_rect(center=(self.map_x,self.map_y))
             self.last_move_state=self.move_state
-        #collision detection
-        '''for wall in in_game_wall:
-            if wall.need_deter:
-                if pg.sprite.collide_rect(self, wall):
-                    if self.last_move_state=="up" or self.last_move_state=="down":
-                        self.map_y=self.last_map_y
-                    if self.last_move_state=="left" or self.last_move_state=="right":
-                        self.map_x=self.last_map_x'''
-        
-        #self.last_map_x=self.map_x
-        #self.last_map_y=self.map_y
-        for wall in in_game_wall:
-            if wall.need_deter:
-                if pg.sprite.collide_rect(self, wall):
-                #if pg.sprite.collide_mask(self, wall):
-                    if self.move_state=='up':
-                        self.map_y=wall.map_y+wall.half_h+self.half_h+0.1
-                    if self.move_state=='down':
-                        self.map_y=wall.map_y-wall.half_h-self.half_h-0.1
-                    if self.move_state=='left':
-                        self.map_x=wall.map_x+wall.half_w+self.half_w+0.1
-                    if self.move_state=='right':
-                        self.map_x=wall.map_x-wall.half_w-self.half_w-0.1
-        
+            self.half_w=self.mask_rect.width/2
+            self.half_h=self.mask_rect.height/2
 
 class npcObject(pg.sprite.Sprite):
     def __init__(self,picture_paths,center,size):
@@ -333,20 +301,18 @@ class wallObject(pg.sprite.Sprite):
                     os.path.join(path)
                     ).convert_alpha(),size))
         self.image=self.images[0]
-        #self.rect=self.image.get_rect(center=center)
-        self.map_x,self.map_y=center
-        self.image_w=self.image.get_width()
-        self.image_h=self.image.get_height()
-        self.mask=pg.mask.from_surface(self.image)
         self.rect=self.image.get_rect(center=(10000,10000))#初始位置放在看不到的地方
+        self.map_x,self.map_y=center
+        self.mask=pg.mask.from_surface(self.image)
+        self.mask_rect=self.mask.get_rect(center=center)
+        self.half_w=self.mask_rect.width/2
+        self.half_h=self.mask_rect.height/2
         self.need_deter=False
-        self.half_w=self.rect.width/2
-        self.half_h=self.rect.height/2
     def update(self,camera_x,camera_y):
         self.need_deter=False#需要判定=false
         #和npc一樣的判斷邏輯
-        if self.map_x-camera_x<=w+self.image_w/2 and self.map_y-camera_y<=h+self.image_h/2\
-            and self.map_x-camera_x>=0-self.image_w/2 and self.map_y-camera_y>=0-self.image_h/2:
+        if self.map_x-camera_x<=w+self.half_w and self.map_y-camera_y<=h+self.half_h\
+            and self.map_x-camera_x>=0-self.half_w and self.map_y-camera_y>=0-self.half_h:
             self.need_deter=True
             self.rect=self.image.get_rect(center=(self.map_x-camera_x,self.map_y-camera_y))
 
@@ -509,14 +475,16 @@ def in_game_transition():
 #in game init
 last_map_x=kingnom.map_x
 last_map_y=kingnom.map_y
+wall_rect_corretion_x=20#校正空氣牆
+wall_rect_corretion_y=3
 def in_game(pressKeyQueue):
-    global kingnom,last_map_x,last_map_y
+    global kingnom,last_map_x,last_map_y,wall_rect_corretion_x,wall_rect_corretion_y
     global w,h
     global map_width, map_height, char_half_w, char_half_h
     last_map_x,last_map_y=kingnom.map_x,kingnom.map_y
-    #screen.blit(inGameBg.image,inGameBg.rect)
+
     #in_game_sprites.update()
-    kingnom.update(pressKeyQueue,in_game_wall)
+    kingnom.update(pressKeyQueue)
     #2. 將角色的世界座標限制在地圖範圍內
     if kingnom.map_x < char_half_w:
         kingnom.map_x = char_half_w
@@ -527,6 +495,18 @@ def in_game(pressKeyQueue):
     if kingnom.map_y > map_height - char_half_h:
         kingnom.map_y = map_height - char_half_h
 
+    #2.1 牆壁碰撞
+    for wall in in_game_wall:
+        if wall.need_deter:
+            if kingnom.map_x+kingnom.half_w>wall.map_x-wall.half_w +wall_rect_corretion_x and\
+                kingnom.map_x-kingnom.half_w<wall.map_x+wall.half_w -wall_rect_corretion_x and\
+                abs(kingnom.map_y-wall.map_y)<kingnom.half_h+wall.half_h -wall_rect_corretion_y:
+                kingnom.map_x=last_map_x
+            if kingnom.map_y+kingnom.half_h>wall.map_y-wall.half_h +wall_rect_corretion_y and\
+                kingnom.map_y-kingnom.half_h<wall.map_y+wall.half_h -wall_rect_corretion_y and\
+                abs(kingnom.map_x-wall.map_x)<kingnom.half_w+wall.half_w -wall_rect_corretion_x:
+                kingnom.map_y=last_map_y
+            
     # 3. 根據角色的世界座標計算攝影機的理想位置 (目標是讓角色保持在螢幕中央)
     camera_x = kingnom.map_x - w / 2#由 camera_x+w/2=map_x 推導而來
     camera_y = kingnom.map_y - h / 2#由 camera_y+h/2=map_y 推導而來
@@ -544,29 +524,9 @@ def in_game(pressKeyQueue):
     for npc in in_game_npc:
         npc.update(camera_x,camera_y)
     for wall in in_game_wall:
-        wall.update(camera_x,camera_y)
-    '''for wall in in_game_wall:
-        if wall.need_deter:
-            if collision_by_mask_with_object(kingnom,wall):
-                if kingnom.move_state=="up":
-                    kingnom.map_y+=kingnom.v
-                elif kingnom.move_state=="down":
-                    kingnom.map_y-=kingnom.v
-                elif kingnom.move_state=="left":
-                    kingnom.map_x+=kingnom.v
-                elif kingnom.move_state=="right":
-                    kingnom.map_x-=kingnom.v'''
+        wall.update(camera_x,camera_y)             
 
-    '''for wall in in_game_wall:
-        if wall.need_deter:
-            if pg.sprite.collide_rect(kingnom, wall):
-                if kingnom.last_move_state=="up" or kingnom.last_move_state=="down":
-                    kingnom.map_y=kingnom.last_map_y
-                if kingnom.last_move_state=="left" or kingnom.last_move_state=="right":
-                    kingnom.map_x=kingnom.last_map_x'''
-                 
-
-                 
+    #kingnom.update(pressKeyQueue,in_game_wall)
     # 5. 根據攝影機的位置，更新地圖的螢幕位置 (地圖的移動方向與攝影機相反)
     inGameBg.rect.x = -camera_x
     inGameBg.rect.y = -camera_y
