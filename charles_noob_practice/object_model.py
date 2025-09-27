@@ -292,7 +292,7 @@ class mapObject(pg.sprite.Sprite):
             self.rect.right=w'''
 
 class wallObject(pg.sprite.Sprite):
-    def __init__(self,picture_paths,center,size):
+    def __init__(self,picture_paths,picture_index,center,size):
         super().__init__()
         self.images = []
         for path in picture_paths:
@@ -300,7 +300,7 @@ class wallObject(pg.sprite.Sprite):
                 pg.image.load(
                     os.path.join(path)
                     ).convert_alpha(),size))
-        self.image=self.images[0]
+        self.image=self.images[picture_index]
         self.rect=self.image.get_rect(center=(10000,10000))#初始位置放在看不到的地方
         self.map_x,self.map_y=center
         self.mask=pg.mask.from_surface(self.image)
@@ -338,14 +338,13 @@ back_paths=[os.path.join(base_dir, "picture", "return", "return1.png"),
 kingnom_stand_paths=[os.path.join(base_dir, "picture", "kingnom", "kingnom_stand1.png"),
              os.path.join(base_dir, "picture", "kingnom", "kingnom_stand2.png")]
 
-kingnom_move_paths=[
-    os.path.join(base_dir, "picture", "kingnom", "kingnom_move1.png"),
-    os.path.join(base_dir, "picture", "kingnom", "kingnom_move2.png")
-]
+kingnom_move_paths=[os.path.join(base_dir, "picture", "kingnom", "kingnom_move1.png"),
+    os.path.join(base_dir, "picture", "kingnom", "kingnom_move2.png")]
 
 hitler_paths=[os.path.join(base_dir,"picture","hitler","hitler1.png")]
 
-barrier1_paths=[os.path.join(base_dir,"picture","barrier","barrier_wall.png")]
+barrier_paths=[os.path.join(base_dir,"picture","barrier","barrier_wall_vert.png"),
+    os.path.join(base_dir,"picture","barrier","barrier_wall_hori.png")]
 #----------------------------------------------------------------------------------------------
 #object setup
 #pause
@@ -374,16 +373,20 @@ sybau_transition=pg.transform.scale(pg.image.load(sybau_paths[2]),(200,200))
 
 #in game
 kingnom=characterObject(kingnom_stand_paths,kingnom_move_paths,(w/2,h/2),(110,125))
-kingnom.map_x=4160/2#2080
-kingnom.map_y=3760/2#1880
+kingnom.map_x=1040#4160/2#2080
+kingnom.map_y=1880#3760/2#1880
 char_half_w = kingnom.rect.width / 2
 char_half_h = kingnom.rect.height / 2
     #in game npc
 hitler=npcObject(hitler_paths,(300,1880),(200,145))
 in_game_npc.append(hitler)
     #in game wall
-barrier1=wallObject(barrier1_paths,(250,1880),(40,220))
+barrier1=wallObject(barrier_paths,0,(200,1780),(40,480))
 in_game_wall.append(barrier1)
+barrier2=wallObject(barrier_paths,1,(500,1500),(700,40))
+in_game_wall.append(barrier2)
+barrier3=wallObject(barrier_paths,1,(500,2050),(700,40))
+in_game_wall.append(barrier3)
 #----------------------------------------------------------------------------------------------
 #music init
 pg.mixer.music.load(os.path.join(base_dir, "voice", "soundtrack", "red_sun_in_the_sky.wav"))#mainMenuBgm
@@ -403,7 +406,8 @@ main_menu_bg_or.convert()
 mainMenuBg=pg.transform.scale(main_menu_bg_or.convert_alpha(),(w,h))
 
 #in game
-inGameBg=mapObject(os.path.join(base_dir, "picture", "back_ground", "map2.png"),(w/2,h/2),(4160,3760))
+#inGameBg=mapObject(os.path.join(base_dir, "picture", "back_ground", "in_game_map2.png"),(w/2,h/2),(4160,3760))
+inGameBg=mapObject(os.path.join(base_dir, "picture", "back_ground", "in_game_map2_debug.png"),(w/2,h/2),(4160,3760))
 map_width, map_height = inGameBg.rect.width, inGameBg.rect.height
 #----------------------------------------------------------------------------------------------
 #text setup
@@ -521,12 +525,12 @@ def in_game(pressKeyQueue):
     if camera_y > map_height - h:
         camera_y = map_height - h
     
+    #4.2 更新 NPC 和牆壁的螢幕位置
     for npc in in_game_npc:
         npc.update(camera_x,camera_y)
     for wall in in_game_wall:
         wall.update(camera_x,camera_y)             
 
-    #kingnom.update(pressKeyQueue,in_game_wall)
     # 5. 根據攝影機的位置，更新地圖的螢幕位置 (地圖的移動方向與攝影機相反)
     inGameBg.rect.x = -camera_x
     inGameBg.rect.y = -camera_y
@@ -535,13 +539,15 @@ def in_game(pressKeyQueue):
     kingnom.rect.centerx = kingnom.map_x - camera_x
     kingnom.rect.centery = kingnom.map_y - camera_y
 
+    #7. draw
     screen.blit(inGameBg.image,inGameBg.rect)
     #in_game_sprites.draw(screen)
     if hitler.need_draw:
         screen.blit(hitler.image,hitler.rect)
     screen.blit(kingnom.image,kingnom.rect)
-    if barrier1.need_deter:
-        screen.blit(barrier1.image,barrier1.rect)
+    for wall in in_game_wall:
+        if wall.need_deter:
+            screen.blit(wall.image,wall.rect)
     #vol_update()
 
 #main loop
