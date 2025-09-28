@@ -1,8 +1,8 @@
 import pygame as pg
 import random,math,os
 # --- 為了跨平台相容性而進行的路徑設定 ---
-script_dir = os.path.dirname(os.path.abspath(__file__))
-base_dir = os.path.dirname(script_dir)
+#script_dir = os.path.dirname(os.path.abspath(__file__))
+#base_dir = os.path.dirname(script_dir)
 
 '''
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -10,11 +10,8 @@ base_dir = os.path.dirname(script_dir)
 #將父目錄路徑添加到 Python 的搜尋路徑中
 #sys.path.insert(0, ...) 將路徑添加到清單的最前面
 sys.path.insert(0, base_dir)
-'''
-
-#from XddObjects import buttonObject
 import XddObjects as xo
-
+'''
 #init
 #screeninfo=pg.display.Info()
 #w,h=screeninfo.current_w,screeninfo.current_h-80
@@ -125,7 +122,7 @@ class sliderTwistObject(pg.sprite.Sprite):
         self.image=pg.transform.scale(
             pg.image.load(
                 os.path.join(
-                    base_dir, picture_paths)).convert_alpha(),
+                     picture_paths)).convert_alpha(),
             size)
         self.rect=self.image.get_rect(center=center)
         self.rect.centerx=self.rail.minx+\

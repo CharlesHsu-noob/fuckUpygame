@@ -26,11 +26,13 @@ in_game_wall=[]
 in_game_door=[]
 in_ac_wall=[]
 in_ac_door=[]
+in_ma_u_door=[]
 pause_sprites = pg.sprite.Group()
 #map_sprites = pg.sprite.Group()
 state_pos={}
 state_pos["in_game"]=(w/2,h/2)
 state_pos["in_ac"]=(2048/2,1160-100)
+state_pos["in_ma_u"]=(1023,588)
 
 def collision_by_mask_with_mouse(rect,mask):
     mouse_pos = pg.mouse.get_pos()
@@ -383,7 +385,8 @@ kingnom_move_paths=[os.path.join(base_dir, "picture", "kingnom", "kingnom_move1.
 hitler_paths=[os.path.join(base_dir,"picture","hitler","hitler1.png")]
 
 barrier_paths=[os.path.join(base_dir,"picture","barrier","barrier_wall_vert.png"),
-    os.path.join(base_dir,"picture","barrier","barrier_wall_hori.png")]
+    os.path.join(base_dir,"picture","barrier","barrier_wall_hori.png"),
+    os.path.join(base_dir,"picture","barrier","150px-barrier.png")]
 
 door_paths=[os.path.join(base_dir,"picture","door","door1.png")]
 #----------------------------------------------------------------------------------------------
@@ -414,8 +417,8 @@ sybau_transition=pg.transform.scale(pg.image.load(sybau_paths[2]),(200,200))
 
 #in game
 kingnom=characterObject(kingnom_stand_paths,kingnom_move_paths,state_pos["in_game"],(88,100))
-kingnom.map_x=1040#4160/2#2080
-kingnom.map_y=1880#3760/2#1880
+kingnom.map_x=4160/2#2080
+kingnom.map_y=3760/2#1880
 char_half=[kingnom.rect.width / 2,kingnom.rect.height / 2]
     #in game npc
 hitler=npcObject(hitler_paths,(300,1880),(200,145))
@@ -427,12 +430,18 @@ barrier2=wallObject(barrier_paths,1,(500,1500),(700,40),True)
 in_game_wall.append(barrier2)
 barrier3=wallObject(barrier_paths,1,(500,2050),(700,40),True)
 in_game_wall.append(barrier3)
+ma_u_guan_barrier=wallObject(barrier_paths,2,(3700,1600),(400,600),False)
+in_game_wall.append(ma_u_guan_barrier)
 
 #door
 in_game_to_ac=doorObject(door_paths,(900,1640),(75,75),"in_ac",True)#ac=activity center
 in_game_door.append(in_game_to_ac)
 ac_to_in_game=doorObject(door_paths,(2048/2,1160-20),(75,75),"in_game",True)
 in_ac_door.append(ac_to_in_game)
+in_game_to_ma_u=doorObject(door_paths,(3470,1610),(75,75),"in_ma_u",True)#美玉管
+in_game_door.append(in_game_to_ma_u)
+ma_u_to_in_game=doorObject(door_paths,(2048/2,h-20),(75,75),"in_game",True)
+in_ma_u_door.append(ma_u_to_in_game)
 #----------------------------------------------------------------------------------------------
 #music init
 pg.mixer.music.load(os.path.join(base_dir, "voice", "soundtrack", "red_sun_in_the_sky.wav"))#mainMenuBgm
@@ -457,6 +466,9 @@ in_game_bg=mapObject(os.path.join(base_dir, "picture", "back_ground", "in_game_m
 
 #in ac
 ac_bg=mapObject(os.path.join(base_dir,"picture","back_ground","ac_bg.png"),(w/2,h/2),(2048,1160))
+
+#in ma u
+ma_u_bg=mapObject(os.path.join(base_dir,"picture","back_ground","ma_u_bg.png"),(w/2,h/2),(w,h))
 #----------------------------------------------------------------------------------------------
 #text setup
 #volume
@@ -471,6 +483,9 @@ titleZH=pg.font.Font(os.path.join(base_dir, "font", "bpm", "BpmfZihiSerif-Regula
 titleZHtext=titleZH.render("金農的大冒險",True,(255,200,200))
 hint=pg.font.Font(os.path.join(base_dir,"font","bpm","BpmfZihiSerif-Light.ttf"),20)
 hint_text=hint.render("點擊ESC鍵以暫停遊戲",True,(255,220,100))
+
+#in game
+pos_font=pg.font.SysFont("times new roman",20)
 #----------------------------------------------------------------------------------------------
 #universal function
 def draw_sence(bg,npc_list,door_list,char,wall_list,sprites):#依照圖層序排列
@@ -560,6 +575,92 @@ def sence_fade_in(frozen):
         fade_surface.set_alpha(alpha*3)
         screen.blit(fade_surface, (0, 0))
         pg.display.update()
+
+def move_update(char,pressKeyQueue,bg,npc_list,wall_list,door_list):
+    global game_state,last_game_state,w,h
+    global play_animation
+    global last_map_x,last_map_y
+    last_map_x=char.map_x
+    last_map_y=char.map_y
+    
+    char.update(pressKeyQueue)
+    #2. 邊界判定
+    char.map_x,char.map_y=boundary_deter(char,bg,char_half)
+
+    #2.1 牆壁碰撞
+    char.map_x,char.map_y=wall_collision(char, wall_list,last_map_x,last_map_y)
+
+     # 3. 根據角色的世界座標計算攝影機的理想位置 (目標是讓角色保持在螢幕中央)
+    camera_x = char.map_x - w / 2#由 camera_x+w/2=map_x 推導而來
+    camera_y = char.map_y - h / 2#由 camera_y+h/2=map_y 推導而來
+
+    #4.1 將攝影機限制在地圖邊界內，避免顯示地圖外的黑色區域
+    if camera_x < 0:
+        camera_x = 0
+    if camera_x > bg.map_w - w:
+        camera_x = bg.map_w - w
+    if camera_y < 0:
+        camera_y = 0
+    if camera_y > bg.map_h - h:
+        camera_y = bg.map_h - h
+
+    #4.2
+    for npc in npc_list:
+        npc.update(camera_x,camera_y)
+    for wall in wall_list:
+        wall.update(camera_x,camera_y) 
+    if door_update(char,door_list,camera_x,camera_y):return   
+
+    # 5. 根據攝影機的位置，更新地圖的螢幕位置 (地圖的移動方向與攝影機相反)
+    bg.rect.x = -camera_x
+    bg.rect.y = -camera_y
+    
+    # 6. 根據攝影機位置和角色的世界座標，計算角色在螢幕上的最終位置
+    char.rect.centerx = char.map_x - camera_x
+    char.rect.centery = char.map_y - camera_y
+
+    #draw
+    screen.blit(bg.image,bg.rect)
+    for npc in npc_list:
+        if npc.need_draw:
+            screen.blit(npc.image,npc.rect)
+    for door in door_list:
+        if door.need_deter and door.visible:
+            screen.blit(door.image,door.rect)
+    screen.blit(char.image,char.rect)
+    for wall in wall_list:
+        if wall.need_deter and wall.visible:
+            screen.blit(wall.image,wall.rect)
+    pos_text=f"pos:({str(kingnom.map_x)},{str(kingnom.map_y)})"
+    pos_surface=pos_font.render(pos_text,True,rainbow_text_color.get_color())
+    screen.blit(pos_surface,(10,10))
+
+class ColorCycler:
+    """
+    自動管理計數器，用正弦波實現平滑的 RGB 循環顏色變換。
+    """
+    def __init__(self, speed: float = 0.02):
+        self.counter = 0.0
+        self.speed = speed
+
+    def get_color(self) -> tuple[int, int, int]:
+        """
+        更新計數器並回傳當前的彩虹循環顏色。
+        """
+        # 1. 更新計數器
+        self.counter += self.speed
+        if self.counter>=10000:
+            self.counter=0
+        time = self.counter
+
+        # 2. 計算 R, G, B 分量 (使用不同的相位差)
+        R = math.sin(time) * 127.5 + 127.5
+        G = math.sin(time + 2 * math.pi / 3) * 127.5 + 127.5
+        B = math.sin(time + 4 * math.pi / 3) * 127.5 + 127.5
+
+        # 3. 確保 R, G, B 值在 0-255 的整數範圍內
+        return (int(R), int(G), int(B))
+rainbow_text_color = ColorCycler(speed=0.08)
 #----------------------------------------------------------------------------------------------
 def vol_update():
     global vol_percent,vol_text,vol_font
@@ -617,77 +718,14 @@ last_map_x=kingnom.map_x
 last_map_y=kingnom.map_y
 def in_game(pressKeyQueue):
     global kingnom
-    global w,h,game_state,play_animation
-    global last_map_x,last_map_y
-    #in_game_sprites.update()
-    last_map_x=kingnom.map_x
-    last_map_y=kingnom.map_y
-    kingnom.update(pressKeyQueue)
-    #2. 邊界判定
-    kingnom.map_x,kingnom.map_y=boundary_deter(kingnom,in_game_bg,char_half)
-
-    #2.1 牆壁碰撞
-    kingnom.map_x,kingnom.map_y=wall_collision(kingnom,in_game_wall,last_map_x,last_map_y)
-            
-    # 3. 根據角色的世界座標計算攝影機的理想位置 (目標是讓角色保持在螢幕中央)
-    camera_x = kingnom.map_x - w / 2#由 camera_x+w/2=map_x 推導而來
-    camera_y = kingnom.map_y - h / 2#由 camera_y+h/2=map_y 推導而來
-
-    #4.1 將攝影機限制在地圖邊界內，避免顯示地圖外的黑色區域
-    if camera_x < 0:
-        camera_x = 0
-    if camera_x > in_game_bg.map_w - w:
-        camera_x = in_game_bg.map_w - w
-    if camera_y < 0:
-        camera_y = 0
-    if camera_y > in_game_bg.map_h - h:
-        camera_y = in_game_bg.map_h - h
+    global play_animation
     
-    #4.2 需要camera 的物件更新
-    for npc in in_game_npc:
-        npc.update(camera_x,camera_y)
-    for wall in in_game_wall:
-        wall.update(camera_x,camera_y) 
-    if door_update(kingnom,in_game_door,camera_x,camera_y):return
-    '''for door in in_game_door:
-        door.update(camera_x,camera_y)
-        if abs(door.rect.centerx-kingnom.rect.centerx)<kingnom.half_w and\
-            abs(door.rect.centery-kingnom.rect.centery)<kingnom.half_h:
-            frozen=screen.copy()
-            if kingnom.move_state=="up":
-                kingnom.map_y+=30
-            elif kingnom.move_state=="down":
-                kingnom.map_y-=30
-            if kingnom.move_state=="left":
-                kingnom.map_x+=30
-            elif kingnom.move_state=="right":
-                kingnom.map_x-=30
-            state_pos[game_state]=kingnom.map_x,kingnom.map_y
-            kingnom.map_x,kingnom.map_y=state_pos[door.target]
-            sence_fade_out(frozen)
-            game_state=door.target
-            return'''
-
-    # 5. 根據攝影機的位置，更新地圖的螢幕位置 (地圖的移動方向與攝影機相反)
-    in_game_bg.rect.x = -camera_x
-    in_game_bg.rect.y = -camera_y
-    
-    # 6. 根據攝影機位置和角色的世界座標，計算角色在螢幕上的最終位置
-    kingnom.rect.centerx = kingnom.map_x - camera_x
-    kingnom.rect.centery = kingnom.map_y - camera_y
-
-    #7. draw
-    screen.blit(in_game_bg.image,in_game_bg.rect)
-    #in_game_sprites.draw(screen)
-    if hitler.need_draw:
-        screen.blit(hitler.image,hitler.rect)
-    for door in in_game_door:
-        if door.need_deter and door.visible:
-            screen.blit(door.image,door.rect)
-    screen.blit(kingnom.image,kingnom.rect)
-    for wall in in_game_wall:
-        if wall.need_deter and wall.visible:
-            screen.blit(wall.image,wall.rect)
+    move_update(kingnom,
+                pressKeyQueue,
+                in_game_bg,
+                in_game_npc,
+                in_game_wall,
+                in_game_door)
 
     if play_animation:
         draw_sence(in_game_bg,in_game_npc,in_game_door,kingnom,in_game_wall,empty_sprite_group)
@@ -697,56 +735,36 @@ def in_game(pressKeyQueue):
 
 #in ac init
 def in_ac(pressKeyQueue):
-    global game_state,last_game_state,w,h
     global kingnom
     global play_animation
     
-    kingnom.update(pressKeyQueue)
-    #2. 邊界判定
-    kingnom.map_x,kingnom.map_y=boundary_deter(kingnom,ac_bg,char_half)
-
-    #2.1 牆壁碰撞
-    kingnom.map_x,kingnom.map_y=wall_collision(kingnom,in_ac_wall,last_map_x,last_map_y)
-
-     # 3. 根據角色的世界座標計算攝影機的理想位置 (目標是讓角色保持在螢幕中央)
-    camera_x = kingnom.map_x - w / 2#由 camera_x+w/2=map_x 推導而來
-    camera_y = kingnom.map_y - h / 2#由 camera_y+h/2=map_y 推導而來
-
-    #4.1 將攝影機限制在地圖邊界內，避免顯示地圖外的黑色區域
-    if camera_x < 0:
-        camera_x = 0
-    if camera_x > ac_bg.map_w - w:
-        camera_x = ac_bg.map_w - w
-    if camera_y < 0:
-        camera_y = 0
-    if camera_y > ac_bg.map_h - h:
-        camera_y = ac_bg.map_h - h
-
-    #4.2
-    for wall in in_ac_wall:
-        wall.update(camera_x,camera_y) 
-    if door_update(kingnom,in_ac_door,camera_x,camera_y):return   
-
-    # 5. 根據攝影機的位置，更新地圖的螢幕位置 (地圖的移動方向與攝影機相反)
-    ac_bg.rect.x = -camera_x
-    ac_bg.rect.y = -camera_y
-    
-    # 6. 根據攝影機位置和角色的世界座標，計算角色在螢幕上的最終位置
-    kingnom.rect.centerx = kingnom.map_x - camera_x
-    kingnom.rect.centery = kingnom.map_y - camera_y
-
-    #draw
-    screen.blit(ac_bg.image,ac_bg.rect)
-    for door in in_ac_door:
-        if door.need_deter and door.visible:
-            screen.blit(door.image,door.rect)
-    screen.blit(kingnom.image,kingnom.rect)
-    for wall in in_ac_wall:
-        if wall.need_deter and wall.visible:
-            screen.blit(wall.image,wall.rect)
+    move_update(kingnom,
+                pressKeyQueue,
+                ac_bg,
+                empty_array,#npc_list
+                in_ac_wall,
+                in_ac_door)
 
     if play_animation:
         draw_sence(ac_bg,empty_array,in_ac_door,kingnom,in_ac_wall,empty_sprite_group)
+        frozen=screen.copy()
+        sence_fade_in(frozen)
+        play_animation=False
+
+#in ma u init
+def in_ma_u(pressKeyQueue):
+    global kingnom
+    global play_animation
+    
+    move_update(kingnom,
+                pressKeyQueue,
+                ma_u_bg,
+                empty_array,#npc_list
+                empty_array,#wall_list
+                in_ma_u_door)
+
+    if play_animation:
+        draw_sence(ma_u_bg,empty_array,in_ma_u_door,kingnom,empty_array,empty_sprite_group)
         frozen=screen.copy()
         sence_fade_in(frozen)
         play_animation=False
@@ -814,6 +832,8 @@ while running:
             in_game(pressKeyQueue)
         case "in_ac":
             in_ac(pressKeyQueue)
+        case "in_ma_u":
+            in_ma_u(pressKeyQueue)
         case _:
             pass
 
