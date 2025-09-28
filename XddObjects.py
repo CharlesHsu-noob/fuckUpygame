@@ -4,6 +4,17 @@ import random,math,os
 script_dir = os.path.dirname(os.path.abspath(__file__))
 base_dir = os.path.dirname(script_dir)
 
+'''
+script_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.dirname(script_dir)
+#將父目錄路徑添加到 Python 的搜尋路徑中
+#sys.path.insert(0, ...) 將路徑添加到清單的最前面
+sys.path.insert(0, base_dir)
+'''
+
+#from XddObjects import buttonObject
+import XddObjects as xo
+
 #init
 #screeninfo=pg.display.Info()
 #w,h=screeninfo.current_w,screeninfo.current_h-80
