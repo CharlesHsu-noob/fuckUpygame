@@ -52,8 +52,7 @@ class moveObject(pg.sprite.Sprite):
         self.dx=v*math.cos(self.pos)
         self.dy=v*math.sin(self.pos)
         
-    def update(self):
-        global screen
+    def update(self,screen):
         self.rect.x+=self.dx
         self.rect.y+=self.dy
         if(self.rect.left<=0 or self.rect.right>=screen.get_width()):

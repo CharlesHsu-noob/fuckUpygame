@@ -40,11 +40,11 @@ def object_setup(state_pos,w,h,game):
 
     #main menu
     game.mrbeast=xo.moveObject(pd.mrbeast_path,(300,550),(200,130),7,False)
-    game.main_menu_sprites.add(game.mrbeast)
+    game.main_menu_sprites.append(game.mrbeast)
     game.milk=xo.moveObject(pd.milk_path,(random.randint(100,250),random.randint(150,250)),(130,170),8,True)
-    game.main_menu_sprites.add(game.milk)
+    game.main_menu_sprites.append(game.milk)
     game.sybau=xo.buttonObject(pd.sybau_paths,(200,325),(200,200))
-    game.main_menu_sprites.add(game.sybau)
+    #game.main_menu_sprites.append(game.sybau)
 
     #transition
     game.transition_omega=2

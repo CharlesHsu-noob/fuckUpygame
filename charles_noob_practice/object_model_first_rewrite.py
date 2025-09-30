@@ -16,7 +16,7 @@ class Global_var():
         self.pressKeyQueue=[]
 
         self.running=True
-        self.game_state = "in_game" # "main_menu", "transition", "in_game", "pause_menu"
+        self.game_state = "main_menu" # "main_menu", "transition", "in_game", "pause_menu"
         self.last_game_state=""
         self.fps=45
         #pause init
@@ -27,7 +27,7 @@ class Global_var():
         self.base_dir = os.path.dirname(self.script_dir)
 
         # --- Sprite Groups & Object Lists ---
-        self.main_menu_sprites = pg.sprite.Group()
+        self.main_menu_sprites =[]
         self.empty_sprite_group = pg.sprite.Group()
         self.empty_array=[]
         self.in_game_npc = []
@@ -247,19 +247,22 @@ def pause_menu(global_bg):
     vol_update()
 
 #main menu init
-def main_menu():
+def main_menu(main_menu_sprite):
     global_var.screen.blit(global_var.mainMenuBg,(0,0))
     global_var.screen.blit(global_var.titletext,(100,80))
     global_var.screen.blit(global_var.titleZHtext,(100,170))
     global_var.screen.blit(global_var.hint_text,(global_var.w-280,global_var.h-30))
-    global_var.main_menu_sprites.update()
-    global_var.main_menu_sprites.draw(global_var.screen)
+    for i in main_menu_sprite:
+        i.update(global_var.screen)
+        global_var.screen.blit(i.image,i.rect)
+    global_var.sybau.update()
+    global_var.screen.blit(global_var.sybau.image,global_var.sybau.rect)
     #vol_update()
 
 #transition init
 transition_counter = 0
 def in_game_transition():
-    global transition_counter, game_state
+    global transition_counter
     # 在 transition 狀態下，每一幀執行一次動畫
     if transition_counter < 50: 
         current_scale = 1 + (transition_counter / 30) * 7
@@ -270,7 +273,7 @@ def in_game_transition():
         trans_image.set_alpha(alpha)
         global_var.mainMenuBg.set_alpha(alpha)
         global_var.kingnom.image.set_alpha(transition_counter*5)
-        global_var.screen.blit(global_var.inGameBg.image,global_var.inGameBg.rect)
+        global_var.screen.blit(global_var.in_game_bg.image,global_var.in_game_bg.rect)
         global_var.screen.blit(global_var.kingnom.image,global_var.kingnom.rect)
         global_var.screen.blit(global_var.mainMenuBg,(0,0))
         global_var.screen.blit(trans_image, trans_rect)
@@ -386,7 +389,7 @@ while global_var.running:
         case "pause_menu":
             pause_menu(frozen)
         case "main_menu":
-            main_menu()
+            main_menu(global_var.main_menu_sprites)
             if global_var.sybau.ispress:
                 global_var.game_state = "transition" 
                 global_var.sybau.ispress = False
