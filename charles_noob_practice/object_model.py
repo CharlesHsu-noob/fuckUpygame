@@ -19,10 +19,20 @@ base_dir = os.path.dirname(script_dir)
 # --- Sprite Groups ---
 main_menu_sprites = pg.sprite.Group()
 #in_game_sprites = pg.sprite.Group()
+empty_array=[]#佔位用
+empty_sprite_group=pg.sprite.Group()
 in_game_npc=[]
 in_game_wall=[]
+in_game_door=[]
+in_ac_wall=[]
+in_ac_door=[]
+in_ma_u_door=[]
 pause_sprites = pg.sprite.Group()
 #map_sprites = pg.sprite.Group()
+state_pos={}
+state_pos["in_game"]=(w/2,h/2)
+state_pos["in_ac"]=(2048/2,1160-100)
+state_pos["in_ma_u"]=(1023,588)
 
 def collision_by_mask_with_mouse(rect,mask):
     mouse_pos = pg.mouse.get_pos()
@@ -130,6 +140,9 @@ class sliderTwistObject(pg.sprite.Sprite):
                     base_dir, picture_paths)).convert_alpha(),
             size)
         self.rect=self.image.get_rect(center=center)
+        self.rect.centerx=self.rail.minx+\
+                            (self.rail.maxx-self.rail.minx)*\
+                            (self.current_val-self.min_val)/(self.max_val-self.min_val)
     def update(self):
         minx=self.rail.minx
         maxx=self.rail.maxx
@@ -278,6 +291,8 @@ class mapObject(pg.sprite.Sprite):
                     picture_path)).convert_alpha(),
             size)
         self.rect=self.image.get_rect(center=center)
+        self.map_w=self.rect.width
+        self.map_h=self.rect.height
     def update(self):
         pass# deal in in_game()
         '''self.rect.x-=dx
@@ -292,7 +307,7 @@ class mapObject(pg.sprite.Sprite):
             self.rect.right=w'''
 
 class wallObject(pg.sprite.Sprite):
-    def __init__(self,picture_paths,center,size):
+    def __init__(self,picture_paths,picture_index,center,size,visible):
         super().__init__()
         self.images = []
         for path in picture_paths:
@@ -300,7 +315,7 @@ class wallObject(pg.sprite.Sprite):
                 pg.image.load(
                     os.path.join(path)
                     ).convert_alpha(),size))
-        self.image=self.images[0]
+        self.image=self.images[picture_index]
         self.rect=self.image.get_rect(center=(10000,10000))#初始位置放在看不到的地方
         self.map_x,self.map_y=center
         self.mask=pg.mask.from_surface(self.image)
@@ -308,6 +323,7 @@ class wallObject(pg.sprite.Sprite):
         self.half_w=self.mask_rect.width/2
         self.half_h=self.mask_rect.height/2
         self.need_deter=False
+        self.visible=visible
     def update(self,camera_x,camera_y):
         self.need_deter=False#需要判定=false
         #和npc一樣的判斷邏輯
@@ -316,6 +332,31 @@ class wallObject(pg.sprite.Sprite):
             self.need_deter=True
             self.rect=self.image.get_rect(center=(self.map_x-camera_x,self.map_y-camera_y))
 
+class doorObject(pg.sprite.Sprite):
+    def __init__(self,picture_paths,center,size,target_state,visible):
+        super().__init__()
+        self.images=[]
+        for path in picture_paths:
+            self.images.append(pg.transform.scale(
+                pg.image.load(
+                    os.path.join(path)).convert_alpha(),size))
+        self.image=self.images[0]
+        self.rect=self.image.get_rect(center=(10000,10000))
+        self.target=target_state
+        self.visible=visible
+        self.need_deter=False
+        self.map_x,self.map_y=center
+        self.mask=pg.mask.from_surface(self.image)
+        self.mask_rect=self.mask.get_rect(center=center)
+        self.half_w=self.mask_rect.width/2
+        self.half_h=self.mask_rect.height/2
+    def update(self,camera_x,camera_y):
+        self.need_deter=False#需要判定=false
+        #和npc一樣的判斷邏輯
+        if self.map_x-camera_x<=w+self.half_w and self.map_y-camera_y<=h+self.half_h\
+            and self.map_x-camera_x>=0-self.half_w and self.map_y-camera_y>=0-self.half_h:
+            self.need_deter=True
+            self.rect=self.image.get_rect(center=(self.map_x-camera_x,self.map_y-camera_y))
 #path setup,excluding map and background
 #one path for one object
 volume_rail_path=os.path.join(base_dir,"picture","sound_slider","slider_rail.png")
@@ -338,20 +379,22 @@ back_paths=[os.path.join(base_dir, "picture", "return", "return1.png"),
 kingnom_stand_paths=[os.path.join(base_dir, "picture", "kingnom", "kingnom_stand1.png"),
              os.path.join(base_dir, "picture", "kingnom", "kingnom_stand2.png")]
 
-kingnom_move_paths=[
-    os.path.join(base_dir, "picture", "kingnom", "kingnom_move1.png"),
-    os.path.join(base_dir, "picture", "kingnom", "kingnom_move2.png")
-]
+kingnom_move_paths=[os.path.join(base_dir, "picture", "kingnom", "kingnom_move1.png"),
+    os.path.join(base_dir, "picture", "kingnom", "kingnom_move2.png")]
 
 hitler_paths=[os.path.join(base_dir,"picture","hitler","hitler1.png")]
 
-barrier1_paths=[os.path.join(base_dir,"picture","barrier","barrier_wall.png")]
+barrier_paths=[os.path.join(base_dir,"picture","barrier","barrier_wall_vert.png"),
+    os.path.join(base_dir,"picture","barrier","barrier_wall_hori.png"),
+    os.path.join(base_dir,"picture","barrier","150px-barrier.png")]
+
+door_paths=[os.path.join(base_dir,"picture","door","door1.png")]
 #----------------------------------------------------------------------------------------------
 #object setup
 #pause
-defaultvol=0.2
+defaultvol=0.0
 volume_rail=sliderRailObject(volume_rail_path,(w/2,h/2),(300,10))
-volume_twist=sliderTwistObject(volume_twist_path,(w/2,h/2),(10,27),0,0.4,defaultvol,volume_rail)
+volume_twist=sliderTwistObject(volume_twist_path,(w/2,h/2),(10,27),0,0.3,defaultvol,volume_rail)
 pause_sprites.add(volume_rail)
 pause_sprites.add(volume_twist)
 pause_exit=buttonObject(exit_paths,(w/2,h-200),(105,45))
@@ -373,21 +416,36 @@ transition_d_scale=0.1
 sybau_transition=pg.transform.scale(pg.image.load(sybau_paths[2]),(200,200))
 
 #in game
-kingnom=characterObject(kingnom_stand_paths,kingnom_move_paths,(w/2,h/2),(110,125))
+kingnom=characterObject(kingnom_stand_paths,kingnom_move_paths,state_pos["in_game"],(88,100))
 kingnom.map_x=4160/2#2080
 kingnom.map_y=3760/2#1880
-char_half_w = kingnom.rect.width / 2
-char_half_h = kingnom.rect.height / 2
+char_half=[kingnom.rect.width / 2,kingnom.rect.height / 2]
     #in game npc
 hitler=npcObject(hitler_paths,(300,1880),(200,145))
 in_game_npc.append(hitler)
     #in game wall
-barrier1=wallObject(barrier1_paths,(250,1880),(40,220))
+barrier1=wallObject(barrier_paths,0,(200,1780),(40,480),True)
 in_game_wall.append(barrier1)
+barrier2=wallObject(barrier_paths,1,(500,1500),(700,40),True)
+in_game_wall.append(barrier2)
+barrier3=wallObject(barrier_paths,1,(500,2050),(700,40),True)
+in_game_wall.append(barrier3)
+ma_u_guan_barrier=wallObject(barrier_paths,2,(3700,1600),(400,600),False)
+in_game_wall.append(ma_u_guan_barrier)
+
+#door
+in_game_to_ac=doorObject(door_paths,(900,1640),(75,75),"in_ac",True)#ac=activity center
+in_game_door.append(in_game_to_ac)
+ac_to_in_game=doorObject(door_paths,(2048/2,1160-20),(75,75),"in_game",True)
+in_ac_door.append(ac_to_in_game)
+in_game_to_ma_u=doorObject(door_paths,(3470,1610),(75,75),"in_ma_u",True)#美玉管
+in_game_door.append(in_game_to_ma_u)
+ma_u_to_in_game=doorObject(door_paths,(2048/2,h-20),(75,75),"in_game",True)
+in_ma_u_door.append(ma_u_to_in_game)
 #----------------------------------------------------------------------------------------------
 #music init
 pg.mixer.music.load(os.path.join(base_dir, "voice", "soundtrack", "red_sun_in_the_sky.wav"))#mainMenuBgm
-defaultvol=0.2
+#defaultvol=0.2  #在object裡面已經定義過
 pg.mixer.music.set_volume(defaultvol)
 pg.mixer.music.play(loops=-1, fade_ms=1500)
 #----------------------------------------------------------------------------------------------
@@ -403,8 +461,14 @@ main_menu_bg_or.convert()
 mainMenuBg=pg.transform.scale(main_menu_bg_or.convert_alpha(),(w,h))
 
 #in game
-inGameBg=mapObject(os.path.join(base_dir, "picture", "back_ground", "map2.png"),(w/2,h/2),(4160,3760))
-map_width, map_height = inGameBg.rect.width, inGameBg.rect.height
+#inGameBg=mapObject(os.path.join(base_dir, "picture", "back_ground", "in_game_map2.png"),(w/2,h/2),(4160,3760))
+in_game_bg=mapObject(os.path.join(base_dir, "picture", "back_ground", "in_game_map2_debug.png"),(w/2,h/2),(4160,3760))
+
+#in ac
+ac_bg=mapObject(os.path.join(base_dir,"picture","back_ground","ac_bg.png"),(w/2,h/2),(2048,1160))
+
+#in ma u
+ma_u_bg=mapObject(os.path.join(base_dir,"picture","back_ground","ma_u_bg.png"),(w/2,h/2),(w,h))
 #----------------------------------------------------------------------------------------------
 #text setup
 #volume
@@ -419,8 +483,185 @@ titleZH=pg.font.Font(os.path.join(base_dir, "font", "bpm", "BpmfZihiSerif-Regula
 titleZHtext=titleZH.render("金農的大冒險",True,(255,200,200))
 hint=pg.font.Font(os.path.join(base_dir,"font","bpm","BpmfZihiSerif-Light.ttf"),20)
 hint_text=hint.render("點擊ESC鍵以暫停遊戲",True,(255,220,100))
-#----------------------------------------------------------------------------------------------
 
+#in game
+pos_font=pg.font.SysFont("times new roman",20)
+#----------------------------------------------------------------------------------------------
+#universal function
+def draw_sence(bg,npc_list,door_list,char,wall_list,sprites):#依照圖層序排列
+    screen.blit(bg.image,bg.rect)
+    for npc in npc_list:
+        if npc.need_draw:
+            screen.blit(npc.image,npc.rect)
+    for door in door_list:
+        if door.need_deter and door.visible:
+            screen.blit(door.image,door.rect)
+    screen.blit(char.image,char.rect)
+    for wall in wall_list:
+        if wall.need_deter and wall.visible:
+            screen.blit(wall.image,wall.rect)
+    sprites.draw(screen)
+
+def wall_collision(char,wall_list,last_map_x,last_map_y):
+    wall_rect_corretion_x=20#校正空氣牆
+    wall_rect_corretion_y=3
+    #global last_map_x,last_map_y
+    return_x=char.map_x
+    return_y=char.map_y
+    for wall in wall_list:
+        if wall.need_deter:
+            if char.map_x+char.half_w>wall.map_x-wall.half_w +wall_rect_corretion_x and\
+                char.map_x-kingnom.half_w<wall.map_x+wall.half_w -wall_rect_corretion_x and\
+                abs(char.map_y-wall.map_y)<char.half_h+wall.half_h -wall_rect_corretion_y:
+                return_x=last_map_x
+            if char.map_y+char.half_h>wall.map_y-wall.half_h +wall_rect_corretion_y and\
+                char.map_y-char.half_h<wall.map_y+wall.half_h -wall_rect_corretion_y and\
+                abs(char.map_x-wall.map_x)<char.half_w+wall.half_w -wall_rect_corretion_x:
+                return_y=last_map_y
+    return return_x,return_y
+
+def boundary_deter(char,bg,char_half):
+    return_x=char.map_x
+    return_y=char.map_y
+    if char.map_x < char_half[0]:
+        return_x = char_half[0]
+    elif char.map_x > bg.map_w - char_half[0]:
+        return_x = bg.map_w - char_half[0]
+    if char.map_y < char_half[1]:
+        return_y = char_half[1]
+    elif char.map_y > bg.map_h - char_half[1]:
+        return_y = bg.map_h - char_half[1]
+    return return_x,return_y
+
+def door_update(char,door_list,camera_x,camera_y):
+    global game_state
+    break_function=False
+    for door in door_list:
+        door.update(camera_x,camera_y)
+        if abs(door.rect.centerx-char.rect.centerx)<char.half_w and\
+            abs(door.rect.centery-char.rect.centery)<char.half_h:
+            frozen=screen.copy()
+            if char.move_state=="up":
+                char.map_y+=30
+            elif char.move_state=="down":
+                char.map_y-=30
+            if char.move_state=="left":
+                char.map_x+=30
+            elif char.move_state=="right":
+                char.map_x-=30
+            state_pos[game_state]=char.map_x,char.map_y
+            char.map_x,char.map_y=state_pos[door.target]
+            sence_fade_out(frozen)
+            game_state=door.target
+            break_function=True
+            return break_function
+
+def sence_fade_out(frozen):
+    fade_surface = pg.Surface(screen.get_size())
+    fade_surface = fade_surface.convert() # 為了更快的 blit 速度
+    fade_surface.fill((0, 0, 0)) # 填滿黑色
+    for alpha in range(0,86):
+        screen.blit(frozen, (0, 0))
+        fade_surface.set_alpha(alpha*3)
+        screen.blit(fade_surface, (0, 0))
+        pg.display.update()
+
+def sence_fade_in(frozen):
+    fade_surface = pg.Surface(screen.get_size())
+    fade_surface = fade_surface.convert() # 為了更快的 blit 速度
+    fade_surface.fill((0, 0, 0)) # 填滿黑色
+    for alpha in range(85,-1,-1):
+        screen.blit(frozen, (0, 0))
+        fade_surface.set_alpha(alpha*3)
+        screen.blit(fade_surface, (0, 0))
+        pg.display.update()
+
+def move_update(char,pressKeyQueue,bg,npc_list,wall_list,door_list):
+    global game_state,last_game_state,w,h
+    global play_animation
+    global last_map_x,last_map_y
+    last_map_x=char.map_x
+    last_map_y=char.map_y
+    
+    char.update(pressKeyQueue)
+    #2. 邊界判定
+    char.map_x,char.map_y=boundary_deter(char,bg,char_half)
+
+    #2.1 牆壁碰撞
+    char.map_x,char.map_y=wall_collision(char, wall_list,last_map_x,last_map_y)
+
+     # 3. 根據角色的世界座標計算攝影機的理想位置 (目標是讓角色保持在螢幕中央)
+    camera_x = char.map_x - w / 2#由 camera_x+w/2=map_x 推導而來
+    camera_y = char.map_y - h / 2#由 camera_y+h/2=map_y 推導而來
+
+    #4.1 將攝影機限制在地圖邊界內，避免顯示地圖外的黑色區域
+    if camera_x < 0:
+        camera_x = 0
+    if camera_x > bg.map_w - w:
+        camera_x = bg.map_w - w
+    if camera_y < 0:
+        camera_y = 0
+    if camera_y > bg.map_h - h:
+        camera_y = bg.map_h - h
+
+    #4.2
+    for npc in npc_list:
+        npc.update(camera_x,camera_y)
+    for wall in wall_list:
+        wall.update(camera_x,camera_y) 
+    if door_update(char,door_list,camera_x,camera_y):return   
+
+    # 5. 根據攝影機的位置，更新地圖的螢幕位置 (地圖的移動方向與攝影機相反)
+    bg.rect.x = -camera_x
+    bg.rect.y = -camera_y
+    
+    # 6. 根據攝影機位置和角色的世界座標，計算角色在螢幕上的最終位置
+    char.rect.centerx = char.map_x - camera_x
+    char.rect.centery = char.map_y - camera_y
+
+    #draw
+    screen.blit(bg.image,bg.rect)
+    for npc in npc_list:
+        if npc.need_draw:
+            screen.blit(npc.image,npc.rect)
+    for door in door_list:
+        if door.need_deter and door.visible:
+            screen.blit(door.image,door.rect)
+    screen.blit(char.image,char.rect)
+    for wall in wall_list:
+        if wall.need_deter and wall.visible:
+            screen.blit(wall.image,wall.rect)
+    pos_text=f"pos:({str(kingnom.map_x)},{str(kingnom.map_y)})"
+    pos_surface=pos_font.render(pos_text,True,rainbow_text_color.get_color())
+    screen.blit(pos_surface,(10,10))
+
+class ColorCycler:
+    """
+    自動管理計數器，用正弦波實現平滑的 RGB 循環顏色變換。
+    """
+    def __init__(self, speed: float = 0.02):
+        self.counter = 0.0
+        self.speed = speed
+
+    def get_color(self) -> tuple[int, int, int]:
+        """
+        更新計數器並回傳當前的彩虹循環顏色。
+        """
+        # 1. 更新計數器
+        self.counter += self.speed
+        if self.counter>=10000:
+            self.counter=0
+        time = self.counter
+
+        # 2. 計算 R, G, B 分量 (使用不同的相位差)
+        R = math.sin(time) * 127.5 + 127.5
+        G = math.sin(time + 2 * math.pi / 3) * 127.5 + 127.5
+        B = math.sin(time + 4 * math.pi / 3) * 127.5 + 127.5
+
+        # 3. 確保 R, G, B 值在 0-255 的整數範圍內
+        return (int(R), int(G), int(B))
+rainbow_text_color = ColorCycler(speed=0.08)
+#----------------------------------------------------------------------------------------------
 def vol_update():
     global vol_percent,vol_text,vol_font
     vol_font = pg.font.Font(None, 30)
@@ -475,84 +716,69 @@ def in_game_transition():
 #in game init
 last_map_x=kingnom.map_x
 last_map_y=kingnom.map_y
-wall_rect_corretion_x=20#校正空氣牆
-wall_rect_corretion_y=3
 def in_game(pressKeyQueue):
-    global kingnom,last_map_x,last_map_y,wall_rect_corretion_x,wall_rect_corretion_y
-    global w,h
-    global map_width, map_height, char_half_w, char_half_h
-    last_map_x,last_map_y=kingnom.map_x,kingnom.map_y
-
-    #in_game_sprites.update()
-    kingnom.update(pressKeyQueue)
-    #2. 將角色的世界座標限制在地圖範圍內
-    if kingnom.map_x < char_half_w:
-        kingnom.map_x = char_half_w
-    if kingnom.map_x > map_width - char_half_w:
-        kingnom.map_x = map_width - char_half_w
-    if kingnom.map_y < char_half_h:
-        kingnom.map_y = char_half_h
-    if kingnom.map_y > map_height - char_half_h:
-        kingnom.map_y = map_height - char_half_h
-
-    #2.1 牆壁碰撞
-    for wall in in_game_wall:
-        if wall.need_deter:
-            if kingnom.map_x+kingnom.half_w>wall.map_x-wall.half_w +wall_rect_corretion_x and\
-                kingnom.map_x-kingnom.half_w<wall.map_x+wall.half_w -wall_rect_corretion_x and\
-                abs(kingnom.map_y-wall.map_y)<kingnom.half_h+wall.half_h -wall_rect_corretion_y:
-                kingnom.map_x=last_map_x
-            if kingnom.map_y+kingnom.half_h>wall.map_y-wall.half_h +wall_rect_corretion_y and\
-                kingnom.map_y-kingnom.half_h<wall.map_y+wall.half_h -wall_rect_corretion_y and\
-                abs(kingnom.map_x-wall.map_x)<kingnom.half_w+wall.half_w -wall_rect_corretion_x:
-                kingnom.map_y=last_map_y
-            
-    # 3. 根據角色的世界座標計算攝影機的理想位置 (目標是讓角色保持在螢幕中央)
-    camera_x = kingnom.map_x - w / 2#由 camera_x+w/2=map_x 推導而來
-    camera_y = kingnom.map_y - h / 2#由 camera_y+h/2=map_y 推導而來
-
-    #4.1 將攝影機限制在地圖邊界內，避免顯示地圖外的黑色區域
-    if camera_x < 0:
-        camera_x = 0
-    if camera_x > map_width - w:
-        camera_x = map_width - w
-    if camera_y < 0:
-        camera_y = 0
-    if camera_y > map_height - h:
-        camera_y = map_height - h
+    global kingnom
+    global play_animation
     
-    for npc in in_game_npc:
-        npc.update(camera_x,camera_y)
-    for wall in in_game_wall:
-        wall.update(camera_x,camera_y)             
+    move_update(kingnom,
+                pressKeyQueue,
+                in_game_bg,
+                in_game_npc,
+                in_game_wall,
+                in_game_door)
 
-    #kingnom.update(pressKeyQueue,in_game_wall)
-    # 5. 根據攝影機的位置，更新地圖的螢幕位置 (地圖的移動方向與攝影機相反)
-    inGameBg.rect.x = -camera_x
-    inGameBg.rect.y = -camera_y
+    if play_animation:
+        draw_sence(in_game_bg,in_game_npc,in_game_door,kingnom,in_game_wall,empty_sprite_group)
+        frozen=screen.copy()
+        sence_fade_in(frozen)
+        play_animation=False
+
+#in ac init
+def in_ac(pressKeyQueue):
+    global kingnom
+    global play_animation
     
-    # 6. 根據攝影機位置和角色的世界座標，計算角色在螢幕上的最終位置
-    kingnom.rect.centerx = kingnom.map_x - camera_x
-    kingnom.rect.centery = kingnom.map_y - camera_y
+    move_update(kingnom,
+                pressKeyQueue,
+                ac_bg,
+                empty_array,#npc_list
+                in_ac_wall,
+                in_ac_door)
 
-    screen.blit(inGameBg.image,inGameBg.rect)
-    #in_game_sprites.draw(screen)
-    if hitler.need_draw:
-        screen.blit(hitler.image,hitler.rect)
-    screen.blit(kingnom.image,kingnom.rect)
-    if barrier1.need_deter:
-        screen.blit(barrier1.image,barrier1.rect)
-    #vol_update()
+    if play_animation:
+        draw_sence(ac_bg,empty_array,in_ac_door,kingnom,in_ac_wall,empty_sprite_group)
+        frozen=screen.copy()
+        sence_fade_in(frozen)
+        play_animation=False
+
+#in ma u init
+def in_ma_u(pressKeyQueue):
+    global kingnom
+    global play_animation
+    
+    move_update(kingnom,
+                pressKeyQueue,
+                ma_u_bg,
+                empty_array,#npc_list
+                empty_array,#wall_list
+                in_ma_u_door)
+
+    if play_animation:
+        draw_sence(ma_u_bg,empty_array,in_ma_u_door,kingnom,empty_array,empty_sprite_group)
+        frozen=screen.copy()
+        sence_fade_in(frozen)
+        play_animation=False
 
 #main loop
 running=True
 game_state = "in_game" # "main_menu", "transition", "in_game", "pause_menu"
-last_state=""
+last_game_state=""
+fps=45
 
 # game loop
 running=True
 while running:
-    clock.tick(30)
+    clock.tick(fps)
     #screen.blit(bg,(0,0))
     for event in pg.event.get():
         if event.type==pg.QUIT:
@@ -566,11 +792,11 @@ while running:
                 is_pause = not is_pause
 
                 if not game_state=="pause_menu":
-                    last_state=game_state
+                    last_pause_state=game_state
                 if is_pause:  
                     game_state="pause_menu"
                 elif not is_pause:
-                    game_state=last_state
+                    game_state=last_pause_state
         # 偵測按鍵事件，並更新按鍵列表
         if event.type == pg.KEYDOWN:
             # 確保同一個鍵不會被重複加入
@@ -584,20 +810,33 @@ while running:
     
     if pause_back.ispress:
         is_pause=False
-        game_state=last_state
+        game_state=last_pause_state
         pause_back.ispress=False
 
-    if game_state=="pause_menu":
-        pause_menu(frozen)
-    elif game_state == "main_menu":
-        main_menu()
-        if sybau.ispress:
-            game_state = "transition" 
-            sybau.ispress = False 
-    elif game_state == "transition":
-        in_game_transition()
-    elif game_state == "in_game":
-        in_game(pressKeyQueue)
+    play_animation=False
+    if last_game_state!=game_state and\
+        last_game_state!="pause_menu":
+        play_animation=True
+    last_game_state=game_state
+    match game_state:
+        case "pause_menu":
+            pause_menu(frozen)
+        case "main_menu":
+            main_menu()
+            if sybau.ispress:
+                game_state = "transition" 
+                sybau.ispress = False
+        case "transition":
+            in_game_transition()
+        case "in_game":
+            in_game(pressKeyQueue)
+        case "in_ac":
+            in_ac(pressKeyQueue)
+        case "in_ma_u":
+            in_ma_u(pressKeyQueue)
+        case _:
+            pass
+
     if pause_exit.ispress:
         running = False 
     pg.display.update()

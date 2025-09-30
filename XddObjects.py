@@ -1,9 +1,17 @@
 import pygame as pg
 import random,math,os
 # --- 為了跨平台相容性而進行的路徑設定 ---
+#script_dir = os.path.dirname(os.path.abspath(__file__))
+#base_dir = os.path.dirname(script_dir)
+
+'''
 script_dir = os.path.dirname(os.path.abspath(__file__))
 base_dir = os.path.dirname(script_dir)
-
+#將父目錄路徑添加到 Python 的搜尋路徑中
+#sys.path.insert(0, ...) 將路徑添加到清單的最前面
+sys.path.insert(0, base_dir)
+import XddObjects as xo
+'''
 #init
 #screeninfo=pg.display.Info()
 #w,h=screeninfo.current_w,screeninfo.current_h-80
@@ -114,9 +122,12 @@ class sliderTwistObject(pg.sprite.Sprite):
         self.image=pg.transform.scale(
             pg.image.load(
                 os.path.join(
-                    base_dir, picture_paths)).convert_alpha(),
+                     picture_paths)).convert_alpha(),
             size)
         self.rect=self.image.get_rect(center=center)
+        self.rect.centerx=self.rail.minx+\
+                            (self.rail.maxx-self.rail.minx)*\
+                            (self.current_val-self.min_val)/(self.max_val-self.min_val)
     def update(self):
         minx=self.rail.minx
         maxx=self.rail.maxx
@@ -146,8 +157,6 @@ class characterObject(pg.sprite.Sprite):
         super().__init__()
         self.map_x=0
         self.map_y=0
-        self.screen_x=w/2
-        self.screen_y=h/2
         self.images = [] 
         self.moves=[]
         self.move_index=0
@@ -174,47 +183,68 @@ class characterObject(pg.sprite.Sprite):
         self.v=10
         self.rect=self.image.get_rect(center=default_center)
         self.is_move=False
+        self.move_state="left"
+        self.mask=pg.mask.from_surface(self.image)
+        self.mask_rect=self.mask.get_rect(center=default_center)
+        self.half_w=self.mask_rect.width/2
+        self.half_h=self.mask_rect.height/2
     def update(self,pressKeyQueue):
-        self.move_character=False
-        #akey_ispress=False
-        self.is_move=False
-        # 如果列表中有按鍵，就處理最新按下的那個
+        self.move_character = False
+        self.is_move = False
+        self.last_move_state = self.move_state
+        self.dx, self.dy = 0, 0
+
+        # 處理按鍵輸入
         if pressKeyQueue:
-            latest_key = pressKeyQueue[-1] # 獲取列表最後一個元素
+            latest_key = pressKeyQueue[-1]
             
             if latest_key == pg.K_w:
                 self.map_y-=self.v
-                dy = -self.v
+                self.dy = -self.v
+                self.move_state = "up"
                 self.is_move = True
                 self.flipy = 1
             elif latest_key == pg.K_s:
                 self.map_y+=self.v
-                dy = self.v
+                self.dy = self.v
+                self.move_state = "down"
                 self.is_move = True
                 self.flipy = 0
             elif latest_key == pg.K_a:
                 self.map_x-=self.v
-                dx = -self.v
+                self.dx = -self.v
+                self.move_state = "left"
                 self.is_move = True
                 self.flipx = 0
             elif latest_key == pg.K_d:
                 self.map_x+=self.v
-                dx = self.v
+                self.dx = self.v
+                self.move_state = "right"
                 self.is_move = True
                 self.flipx = 1
-        if self.move_index >= len(self.moves) * 7:
-            self.move_index=0
         
+        # 更新動畫
+        if self.move_index >= len(self.moves) * 7:
+            self.move_index = 0
+            
         if not self.is_move:
-            self.image=pg.transform.flip(self.images[0],self.flipx,self.flipy)
+            self.image = pg.transform.flip(self.images[0], self.flipx, self.flipy)
             self.move_index = 0
         else:
-            if self.move_index //4==0 or self.move_index//4==1:
-                real_index=0
-            elif self.move_index //4==2 or self.move_index//4==3:
-                real_index=1
-            self.image=pg.transform.flip(self.moves[real_index],self.flipx,self.flipy)
-            self.move_index+=1
+            if self.move_index // 4 == 0 or self.move_index // 4 == 1:
+                real_index = 0
+            elif self.move_index // 4 == 2 or self.move_index // 4 == 3:
+                real_index = 1
+            self.image = pg.transform.flip(self.moves[real_index], self.flipx, self.flipy)
+            self.move_index += 1
+
+        # 更新遮罩
+        if self.last_move_state != self.move_state:
+            self.mask = pg.mask.from_surface(self.image)
+            self.rect=self.image.get_rect(center=(self.map_x,self.map_y))
+            self.last_move_state=self.move_state
+            self.half_w=self.mask_rect.width/2
+            self.half_h=self.mask_rect.height/2
 
 class npcObject(pg.sprite.Sprite):
     def __init__(self,picture_paths,center,size):
@@ -259,7 +289,7 @@ class mapObject(pg.sprite.Sprite):
             self.rect.right=w'''
 
 class wallObject(pg.sprite.Sprite):
-    def __init__(self,picture_paths,center,size):
+    def __init__(self,picture_paths,picture_index,center,size,visible):
         super().__init__()
         self.images = []
         for path in picture_paths:
@@ -267,17 +297,46 @@ class wallObject(pg.sprite.Sprite):
                 pg.image.load(
                     os.path.join(path)
                     ).convert_alpha(),size))
-        self.image=self.images[0]
-        #self.rect=self.image.get_rect(center=center)
+        self.image=self.images[picture_index]
+        self.rect=self.image.get_rect(center=(10000,10000))#初始位置放在看不到的地方
         self.map_x,self.map_y=center
-        self.image_w=self.image.get_width()
-        self.image_h=self.image.get_height()
         self.mask=pg.mask.from_surface(self.image)
+        self.mask_rect=self.mask.get_rect(center=center)
+        self.half_w=self.mask_rect.width/2
+        self.half_h=self.mask_rect.height/2
         self.need_deter=False
+        self.visible=visible
     def update(self,camera_x,camera_y):
         self.need_deter=False#需要判定=false
         #和npc一樣的判斷邏輯
-        if self.map_x-camera_x<=w+self.image_w/2 and self.map_y-camera_y<=h+self.image_h/2\
-            and self.map_x-camera_x>=0-self.image_w/2 and self.map_y-camera_y>=0-self.image_h/2:
+        if self.map_x-camera_x<=w+self.half_w and self.map_y-camera_y<=h+self.half_h\
+            and self.map_x-camera_x>=0-self.half_w and self.map_y-camera_y>=0-self.half_h:
             self.need_deter=True
             self.rect=self.image.get_rect(center=(self.map_x-camera_x,self.map_y-camera_y))
+
+class doorObject(pg.sprite.Sprite):
+    def __init__(self,picture_paths,center,size,target_state,visible):
+        super().__init__()
+        self.images=[]
+        for path in picture_paths:
+            self.images.append(pg.transform.scale(
+                pg.image.load(
+                    os.path.join(path)).convert_alpha(),size))
+        self.image=self.images[0]
+        self.rect=self.image.get_rect(center=(10000,10000))
+        self.target=target_state
+        self.visible=visible
+        self.need_deter=False
+        self.map_x,self.map_y=center
+        self.mask=pg.mask.from_surface(self.image)
+        self.mask_rect=self.mask.get_rect(center=center)
+        self.half_w=self.mask_rect.width/2
+        self.half_h=self.mask_rect.height/2
+    def update(self,camera_x,camera_y):
+        self.need_deter=False#需要判定=false
+        #和npc一樣的判斷邏輯
+        if self.map_x-camera_x<=w+self.half_w and self.map_y-camera_y<=h+self.half_h\
+            and self.map_x-camera_x>=0-self.half_w and self.map_y-camera_y>=0-self.half_h:
+            self.need_deter=True
+            self.rect=self.image.get_rect(center=(self.map_x-camera_x,self.map_y-camera_y))
+
