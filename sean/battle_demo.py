@@ -29,6 +29,7 @@ pressed_keys = []
 x, y = WIDTH // 2, HEIGHT // 2
 size = 10
 speed = 5
+
 default_friction = 0.6
 
 friction_rail_path=os.path.join(base_dir,"picture","sound_slider","slider_rail.png")
@@ -82,10 +83,8 @@ while True:
         elif key == pygame.K_d:
             vx1, vy1 = speed1, 0
     else:
-        vx1 *= friction
-        vy1 *= friction
-        vx *= friction_twist.current_val
-        vy *= friction_twist.current_val
+        vx1 *= friction_twist.current_val
+        vy1 *= friction_twist.current_val
 
     x1 += vx1
     y1 += vy1
@@ -140,3 +139,5 @@ while True:
     
     pygame.display.flip()
     clock.tick(60)
+
+#test
