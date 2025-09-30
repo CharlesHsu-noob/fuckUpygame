@@ -137,7 +137,7 @@ class sliderTwistObject(pg.sprite.Sprite):
         self.image=pg.transform.scale(
             pg.image.load(
                 os.path.join(
-                    base_dir, picture_paths)).convert_alpha(),
+                    picture_paths)).convert_alpha(),
             size)
         self.rect=self.image.get_rect(center=center)
         self.rect.centerx=self.rail.minx+\
@@ -691,7 +691,7 @@ def main_menu():
     #vol_update()
 
 #transition init
-transition_counter = 0 # <--轉場計數器
+transition_counter = 0
 def in_game_transition():
     global transition_counter, game_state
     # 在 transition 狀態下，每一幀執行一次動畫

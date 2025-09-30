@@ -259,7 +259,7 @@ class npcObject(pg.sprite.Sprite):
         self.map_x,self.map_y=center
         self.image_w=self.image.get_width()
         self.image_h=self.image.get_height()
-    def update(self,camera_x,camera_y):
+    def update(self,camera_x,camera_y,w,h):
         self.need_draw=False
         if self.map_x-camera_x<=w+self.image_w/2 and self.map_y-camera_y<=h+self.image_h/2\
             and self.map_x-camera_x>=0-self.image_w/2 and self.map_y-camera_y>=0-self.image_h/2:
@@ -275,6 +275,8 @@ class mapObject(pg.sprite.Sprite):
                     picture_path)).convert_alpha(),
             size)
         self.rect=self.image.get_rect(center=center)
+        self.map_w=self.rect.width
+        self.map_h=self.rect.height
     def update(self):
         pass# deal in in_game()
         '''self.rect.x-=dx
@@ -306,7 +308,7 @@ class wallObject(pg.sprite.Sprite):
         self.half_h=self.mask_rect.height/2
         self.need_deter=False
         self.visible=visible
-    def update(self,camera_x,camera_y):
+    def update(self,camera_x,camera_y,w,h):
         self.need_deter=False#需要判定=false
         #和npc一樣的判斷邏輯
         if self.map_x-camera_x<=w+self.half_w and self.map_y-camera_y<=h+self.half_h\
@@ -332,7 +334,7 @@ class doorObject(pg.sprite.Sprite):
         self.mask_rect=self.mask.get_rect(center=center)
         self.half_w=self.mask_rect.width/2
         self.half_h=self.mask_rect.height/2
-    def update(self,camera_x,camera_y):
+    def update(self,camera_x,camera_y,w,h):
         self.need_deter=False#需要判定=false
         #和npc一樣的判斷邏輯
         if self.map_x-camera_x<=w+self.half_w and self.map_y-camera_y<=h+self.half_h\
