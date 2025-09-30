@@ -30,6 +30,8 @@ x, y = WIDTH // 2, HEIGHT // 2
 size = 10
 speed = 5
 
+
+
 default_friction = 0.6
 
 friction_rail_path=os.path.join(base_dir,"picture","sound_slider","slider_rail.png")
@@ -68,6 +70,8 @@ while True:
             if event.key in pressed_keys:
                 pressed_keys.remove(event.key)
 
+
+    
     # WASD
     friction_twist.update()
     friction_rail.update()
