@@ -15,7 +15,9 @@ clock = pg.time.Clock()
 
 # 建立「暫停」按鈕
 pause_btn = buttonObject(
-    ["exit1", "exit2", "exit3"], 
+    [os.path.join(base_dir,"picture","chuchutest","1.png"),
+     os.path.join(base_dir,"picture","chuchutest","2.png"),
+     os.path.join(base_dir,"picture","chuchutest","未命名.png")], 
     center=(60, 30), size=(100, 50)
 )
 buttons = pg.sprite.Group(pause_btn)
