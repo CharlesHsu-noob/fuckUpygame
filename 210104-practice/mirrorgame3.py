@@ -6,7 +6,7 @@ pg.init()
 # --- 視窗設定 ---
 w, h = 800, 600
 screen = pg.display.set_mode((w, h))
-pg.display.set_caption("雷射反射模擬")
+pg.display.set_caption("雷射反射遊戲")
 
 # --- 顏色 ---
 WHITE = (255, 255, 255)
