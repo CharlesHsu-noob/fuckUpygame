@@ -28,9 +28,9 @@ if __name__=="__main__":
 
 def object_setup(state_pos,w,h,game):
     #pause
-    game.defaultvol=0.0
+    game.defaultvol=0.2
     game.volume_rail=xo.sliderRailObject(pd.volume_rail_path,(w/2,h/2),(300,10))
-    game.volume_twist=xo.sliderTwistObject(pd.volume_twist_path,(w/2,h/2),(10,27),0.0,0.3,game.defaultvol,game.volume_rail)
+    game.volume_twist=xo.sliderTwistObject(pd.volume_twist_path,(w/2,h/2),(10,27),0.0,0.4,game.defaultvol,game.volume_rail)
     game.pause_sprites.add(game.volume_rail)
     game.pause_sprites.add(game.volume_twist)
     game.pause_exit=xo.buttonObject(pd.exit_paths,(w/2,h-200),(105,45))
@@ -79,12 +79,15 @@ def object_setup(state_pos,w,h,game):
     game.ma_u_to_in_game=xo.doorObject(pd.door_paths,(2048/2,h-20),(75,75),"in_game",True)
     game.in_ma_u_door.append(game.ma_u_to_in_game)
 
-def music_setup(defaultvol):
+def music_setup(self):
     #music init
-    pg.mixer.music.load(os.path.join(base_dir, "voice", "soundtrack", "red_sun_in_the_sky.wav"))#mainMenuBgm
-    #defaultvol=0.2  #在object裡面已經定義過
-    pg.mixer.music.set_volume(defaultvol)
-    pg.mixer.music.play(loops=-1, fade_ms=1500)
+    # --- Music Playlist ---
+    self.music_playlist = {
+        "main_menu": os.path.join(base_dir, "voice", "soundtrack", "red_sun_in_the_sky.wav"),
+        "in_game": os.path.join(base_dir, "voice", "soundtrack", "german_erika.wav"),
+        "in_ma_u":os.path.join(base_dir,"voice","soundtrack","bonetrousle.wav")
+    }
+    self.current_music = None # 用於追蹤目前播放的音樂
 
 def map_and_bg_setup(self):
     #map and background setup
