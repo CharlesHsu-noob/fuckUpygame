@@ -18,6 +18,7 @@ class Global_var():
         self.running=True
         self.game_state = "main_menu" # "main_menu", "transition", "in_game", "pause_menu"
         self.last_game_state=""
+        self.last_pause_state=""
         self.fps=45
         #pause init
         self.is_pause=False
@@ -55,22 +56,22 @@ class Global_var():
         self.last_map_x=self.kingnom.map_x
         self.last_map_y=self.kingnom.map_y
 
-global_var=Global_var()
+game=Global_var()
 #----------------------------------------------------------------------------------------------
 #universal function
 def draw_sence(bg,npc_list,door_list,char,wall_list,sprites):#依照圖層序排列
-    global_var.screen.blit(bg.image,bg.rect)
+    game.screen.blit(bg.image,bg.rect)
     for npc in npc_list:
         if npc.need_draw:
-                global_var.screen.blit(npc.image,npc.rect)
+                game.screen.blit(npc.image,npc.rect)
     for door in door_list:
         if door.need_deter and door.visible:
-            global_var.screen.blit(door.image,door.rect)
-    global_var.screen.blit(char.image,char.rect)
+            game.screen.blit(door.image,door.rect)
+    game.screen.blit(char.image,char.rect)
     for wall in wall_list:
         if wall.need_deter and wall.visible:
-                global_var.screen.blit(wall.image,wall.rect)
-    sprites.draw(global_var.screen)
+                game.screen.blit(wall.image,wall.rect)
+    sprites.draw(game.screen)
 
 def wall_collision(char,wall_list,last_map_x,last_map_y):
     wall_rect_corretion_x=20#校正空氣牆
@@ -106,10 +107,10 @@ def boundary_deter(char,bg,char_half):
 def door_update(char,door_list,camera_x,camera_y):
     break_function=False
     for door in door_list:
-        door.update(camera_x,camera_y,global_var.w,global_var.h)
+        door.update(camera_x,camera_y,game.w,game.h)
         if abs(door.rect.centerx-char.rect.centerx)<char.half_w and\
             abs(door.rect.centery-char.rect.centery)<char.half_h:
-            frozen=global_var.screen.copy()
+            frozen=game.screen.copy()
             if char.move_state=="up":
                 char.map_y+=30
             elif char.move_state=="down":
@@ -118,64 +119,60 @@ def door_update(char,door_list,camera_x,camera_y):
                 char.map_x+=30
             elif char.move_state=="right":
                 char.map_x-=30
-            global_var.state_pos[global_var.game_state]=char.map_x,char.map_y
-            char.map_x,char.map_y=global_var.state_pos[door.target]
+            game.state_pos[game.game_state]=char.map_x,char.map_y
+            char.map_x,char.map_y=game.state_pos[door.target]
             sence_fade_out(frozen)
-            global_var.game_state=door.target
+            game.game_state=door.target
             break_function=True
             return break_function
 
 def sence_fade_out(frozen):
-    fade_surface = pg.Surface(global_var.screen.get_size())
+    fade_surface = pg.Surface(game.screen.get_size())
     fade_surface = fade_surface.convert() # 為了更快的 blit 速度
     fade_surface.fill((0, 0, 0)) # 填滿黑色
     for alpha in range(0,86):
-        global_var.screen.blit(frozen, (0, 0))
+        game.screen.blit(frozen, (0, 0))
         fade_surface.set_alpha(alpha*3)
-        global_var.screen.blit(fade_surface, (0, 0))
+        game.screen.blit(fade_surface, (0, 0))
         pg.display.update()
 
 def sence_fade_in(frozen):
-    fade_surface = pg.Surface(global_var.screen.get_size())
+    fade_surface = pg.Surface(game.screen.get_size())
     fade_surface = fade_surface.convert() # 為了更快的 blit 速度
     fade_surface.fill((0, 0, 0)) # 填滿黑色
     for alpha in range(85,-1,-1):
-        global_var.screen.blit(frozen, (0, 0))
+        game.screen.blit(frozen, (0, 0))
         fade_surface.set_alpha(alpha*3)
-        global_var.screen.blit(fade_surface, (0, 0))
+        game.screen.blit(fade_surface, (0, 0))
         pg.display.update()
 
 def move_update(char,pressKeyQueue,bg,npc_list,wall_list,door_list):
-    global last_map_x,last_map_y
-    last_map_x=char.map_x
-    last_map_y=char.map_y
-    
     char.update(pressKeyQueue)
     #2. 邊界判定
-    char.map_x,char.map_y=boundary_deter(char,bg,global_var.char_half)
+    char.map_x,char.map_y=boundary_deter(char,bg,game.char_half)
 
     #2.1 牆壁碰撞
-    char.map_x,char.map_y=wall_collision(char, wall_list,last_map_x,last_map_y)
+    char.map_x,char.map_y=wall_collision(char, wall_list,game.last_map_x,game.last_map_y)
 
      # 3. 根據角色的世界座標計算攝影機的理想位置 (目標是讓角色保持在螢幕中央)
-    camera_x = char.map_x - global_var.w / 2#由 camera_x+w/2=map_x 推導而來
-    camera_y = char.map_y - global_var.h / 2#由 camera_y+h/2=map_y 推導而來
+    camera_x = char.map_x - game.w / 2#由 camera_x+w/2=map_x 推導而來
+    camera_y = char.map_y - game.h / 2#由 camera_y+h/2=map_y 推導而來
 
     #4.1 將攝影機限制在地圖邊界內，避免顯示地圖外的黑色區域
     if camera_x < 0:
         camera_x = 0
-    if camera_x > bg.map_w - global_var.w:
-        camera_x = bg.map_w - global_var.w
+    if camera_x > bg.map_w - game.w:
+        camera_x = bg.map_w - game.w
     if camera_y < 0:
         camera_y = 0
-    if camera_y > bg.map_h - global_var.h:
-        camera_y = bg.map_h - global_var.h
+    if camera_y > bg.map_h - game.h:
+        camera_y = bg.map_h - game.h
 
     #4.2
     for npc in npc_list:
-        npc.update(camera_x,camera_y,global_var.w,global_var.h)
+        npc.update(camera_x,camera_y,game.w,game.h)
     for wall in wall_list:
-        wall.update(camera_x,camera_y,global_var.w,global_var.h) 
+        wall.update(camera_x,camera_y,game.w,game.h) 
     if door_update(char,door_list,camera_x,camera_y):return   
 
     # 5. 根據攝影機的位置，更新地圖的螢幕位置 (地圖的移動方向與攝影機相反)
@@ -187,20 +184,20 @@ def move_update(char,pressKeyQueue,bg,npc_list,wall_list,door_list):
     char.rect.centery = char.map_y - camera_y
 
     #draw
-    global_var.screen.blit(bg.image,bg.rect)
+    game.screen.blit(bg.image,bg.rect)
     for npc in npc_list:
         if npc.need_draw:
-             global_var.screen.blit(npc.image,npc.rect)
+             game.screen.blit(npc.image,npc.rect)
     for door in door_list:
         if door.need_deter and door.visible:
-            global_var.screen.blit(door.image,door.rect)
-    global_var.screen.blit(char.image,char.rect)
+            game.screen.blit(door.image,door.rect)
+    game.screen.blit(char.image,char.rect)
     for wall in wall_list:
         if wall.need_deter and wall.visible:
-             global_var.screen.blit(wall.image,wall.rect)
-    pos_text=f"pos:({str(global_var.kingnom.map_x)},{str(global_var.kingnom.map_y)})"
-    pos_surface=global_var.pos_font.render(pos_text,True,rainbow_text_color.get_color())
-    global_var.screen.blit(pos_surface,(10,10))
+             game.screen.blit(wall.image,wall.rect)
+    pos_text=f"pos:({str(char.map_x)},{str(char.map_y)})"
+    pos_surface=game.pos_font.render(pos_text,True,rainbow_text_color.get_color())
+    game.screen.blit(pos_surface,(10,10))
 
 class ColorCycler:
     """
@@ -232,70 +229,74 @@ rainbow_text_color = ColorCycler(speed=0.08)
 def vol_update():
     global vol_percent,vol_text,vol_font
     vol_font = pg.font.Font(None, 30)
-    vol_percent=float(global_var.volume_twist.current_val*100)/0.4
+    vol_percent=float(game.volume_twist.current_val*100)/game.volume_twist.max_val
     display_text=f"Volume: {int(vol_percent)}"
     display_surface=vol_font.render(display_text, True, (0, 255, 255))
-    global_var.screen.blit(display_surface,(global_var.w/2-270,global_var.h/2-8))
-    pg.mixer.music.set_volume(global_var.volume_twist.current_val)
-
+    game.screen.blit(display_surface,(game.w/2-270,game.h/2-8))
+    pg.mixer.music.set_volume(game.volume_twist.current_val)
 
 def pause_menu(global_bg):
-    global_var.screen.blit(global_bg,(0,0))
-    global_var.screen.blit(global_var.pause_bg,(0,0))
-    global_var.pause_sprites.update()
-    global_var.pause_sprites.draw(global_var.screen)
+    game.screen.blit(global_bg,(0,0))
+    game.screen.blit(game.pause_bg,(0,0))
+    game.pause_sprites.update()
+    game.pause_sprites.draw(game.screen)
     vol_update()
 
 #main menu init
 def main_menu(main_menu_sprite):
-    global_var.screen.blit(global_var.mainMenuBg,(0,0))
-    global_var.screen.blit(global_var.titletext,(100,80))
-    global_var.screen.blit(global_var.titleZHtext,(100,170))
-    global_var.screen.blit(global_var.hint_text,(global_var.w-280,global_var.h-30))
+    game.screen.blit(game.mainMenuBg,(0,0))
+    game.screen.blit(game.titletext,(100,80))
+    game.screen.blit(game.titleZHtext,(100,170))
+    game.screen.blit(game.hint_text,(game.w-280,game.h-30))
     for i in main_menu_sprite:
-        i.update(global_var.screen)
-        global_var.screen.blit(i.image,i.rect)
-    global_var.sybau.update()
-    global_var.screen.blit(global_var.sybau.image,global_var.sybau.rect)
+        i.update(game.screen)
+        game.screen.blit(i.image,i.rect)
+    game.sybau.update()
+    game.screen.blit(game.sybau.image,game.sybau.rect)
     #vol_update()
 
 #transition init
-transition_counter = 0
+transition_counter=0
 def in_game_transition():
     global transition_counter
     # 在 transition 狀態下，每一幀執行一次動畫
     if transition_counter < 50: 
         current_scale = 1 + (transition_counter / 30) * 7
         current_angle = transition_counter * 8
-        trans_image = pg.transform.rotozoom(global_var.sybau_transition, current_angle, current_scale)
-        trans_rect = trans_image.get_rect(center=(global_var.kingnom.rect.centerx, global_var.kingnom.rect.centery))
+        trans_image = pg.transform.rotozoom(game.sybau_transition, current_angle, current_scale)
+        trans_rect = trans_image.get_rect(center=(game.kingnom.rect.centerx, game.kingnom.rect.centery))
         alpha=255-(transition_counter*5)
         trans_image.set_alpha(alpha)
-        global_var.mainMenuBg.set_alpha(alpha)
-        global_var.kingnom.image.set_alpha(transition_counter*5)
-        global_var.screen.blit(global_var.in_game_bg.image,global_var.in_game_bg.rect)
-        global_var.screen.blit(global_var.kingnom.image,global_var.kingnom.rect)
-        global_var.screen.blit(global_var.mainMenuBg,(0,0))
-        global_var.screen.blit(trans_image, trans_rect)
+        game.mainMenuBg.set_alpha(alpha)
+        game.kingnom.image.set_alpha(transition_counter*5)
+        game.screen.blit(game.in_game_bg.image,game.in_game_bg.rect)
+        game.screen.blit(game.kingnom.image,game.kingnom.rect)
+        game.screen.blit(game.mainMenuBg,(0,0))
+        game.screen.blit(trans_image, trans_rect)
         transition_counter += 1
     else:
-        global_var.game_state = "in_game"
+        game.game_state = "in_game"
         transition_counter = 0
 
 
 def in_game(pressKeyQueue):
     global play_animation
     
-    move_update(global_var.kingnom,
+    move_update(game.kingnom,
                 pressKeyQueue,
-                global_var.in_game_bg,
-                global_var.in_game_npc,
-                global_var.in_game_wall,
-                global_var.in_game_door)
+                game.in_game_bg,
+                game.in_game_npc,
+                game.in_game_wall,
+                game.in_game_door)
 
     if play_animation:
-        draw_sence(global_var.in_game_bg,global_var.in_game_npc,global_var.in_game_door,global_var.kingnom,global_var.in_game_wall,global_var.empty_sprite_group)
-        frozen=global_var.screen.copy()
+        draw_sence(game.in_game_bg,
+                   game.in_game_npc,
+                   game.in_game_door,
+                   game.kingnom,
+                   game.in_game_wall,
+                   game.empty_sprite_group)
+        frozen=game.screen.copy()
         sence_fade_in(frozen)
         play_animation=False
 
@@ -303,21 +304,21 @@ def in_game(pressKeyQueue):
 def in_ac(pressKeyQueue):
     global play_animation
     
-    move_update(global_var.kingnom,
+    move_update(game.kingnom,
                 pressKeyQueue,
-                global_var.ac_bg,
-                global_var.empty_array,#npc_list
-                global_var.in_ac_wall,
-                global_var.in_ac_door)
+                game.ac_bg,
+                game.empty_array,#npc_list
+                game.in_ac_wall,
+                game.in_ac_door)
 
     if play_animation:
-        draw_sence(global_var.ac_bg,
-                   global_var.empty_array,
-                   global_var.in_ac_door,
-                   global_var.kingnom,
-                   global_var.in_ac_wall,
-                   global_var.empty_sprite_group)
-        frozen=global_var.screen.copy()
+        draw_sence(game.ac_bg,
+                   game.empty_array,
+                   game.in_ac_door,
+                   game.kingnom,
+                   game.in_ac_wall,
+                   game.empty_sprite_group)
+        frozen=game.screen.copy()
         sence_fade_in(frozen)
         play_animation=False
 
@@ -325,27 +326,27 @@ def in_ac(pressKeyQueue):
 def in_ma_u(pressKeyQueue):
     global play_animation
     
-    move_update(global_var.kingnom,
+    move_update(game.kingnom,
                 pressKeyQueue,
-                global_var.ma_u_bg,
-                global_var.in_game_npc,
-                global_var.empty_array,
-                global_var.in_ma_u_door)
+                game.ma_u_bg,
+                game.empty_array,
+                game.empty_array,
+                game.in_ma_u_door)
 
     if play_animation:
-        draw_sence(global_var.ma_u_bg,
-                   global_var.empty_array,
-                   global_var.in_ma_u_door,
-                   global_var.kingnom,
-                   global_var.empty_array,
-                   global_var.empty_sprite_group)
-        frozen=global_var.screen.copy()
+        draw_sence(game.ma_u_bg,
+                   game.empty_array,
+                   game.in_ma_u_door,
+                   game.kingnom,
+                   game.empty_array,
+                   game.empty_sprite_group)
+        frozen=game.screen.copy()
         sence_fade_in(frozen)
         play_animation=False
 
 # game loop
-while global_var.running:
-    global_var.clock.tick(global_var.fps)
+while game.running:
+    game.clock.tick(game.fps)
     #screen.blit(bg,(0,0))
     for event in pg.event.get():
         if event.type==pg.QUIT:
@@ -353,58 +354,58 @@ while global_var.running:
         #偵測暫停
         if event.type==pg.KEYDOWN:
             if event.key==pg.K_ESCAPE:
-                if not global_var.is_pause:
-                    frozen=global_var.screen.copy()
+                if not game.is_pause:
+                    frozen=game.screen.copy()
                 
-                global_var.is_pause = not global_var.is_pause
+                game.is_pause = not game.is_pause
 
-                if not global_var.game_state=="pause_menu":
-                    global_var.last_pause_state=global_var.game_state
-                if global_var.is_pause:  
-                    global_var.game_state="pause_menu"
-                elif not global_var.is_pause:
-                    global_var.game_state=global_var.last_pause_state
+                if not game.game_state=="pause_menu":
+                    game.last_pause_state=game.game_state
+                if game.is_pause:  
+                    game.game_state="pause_menu"
+                elif not game.is_pause:
+                    game.game_state=game.last_pause_state
         # 偵測按鍵事件，並更新按鍵列表
         if event.type == pg.KEYDOWN:
             # 確保同一個鍵不會被重複加入
             if event.key in [pg.K_w, pg.K_a, pg.K_s, pg.K_d]:
-                if event.key not in global_var.pressKeyQueue:
-                    global_var.pressKeyQueue.append(event.key)
+                if event.key not in game.pressKeyQueue:
+                    game.pressKeyQueue.append(event.key)
 
         if event.type == pg.KEYUP:
-            if event.key in global_var.pressKeyQueue:
-                global_var.pressKeyQueue.remove(event.key)
+            if event.key in game.pressKeyQueue:
+                game.pressKeyQueue.remove(event.key)
     
-    if global_var.pause_back.ispress:
-        is_pause=False
-        global_var.game_state=global_var.last_pause_state
-        global_var.pause_back.ispress=False
+    if game.pause_back.ispress:
+        game.is_pause=False
+        game.game_state=game.last_pause_state
+        game.pause_back.ispress=False
 
     play_animation=False
-    if global_var.last_game_state!=global_var.game_state and\
-        global_var.last_game_state!="pause_menu":
+    if game.last_game_state!=game.game_state and\
+        game.last_game_state!="pause_menu":
         play_animation=True
-    global_var.last_game_state=global_var.game_state
-    match global_var.game_state:
+    game.last_game_state=game.game_state
+    match game.game_state:
         case "pause_menu":
             pause_menu(frozen)
         case "main_menu":
-            main_menu(global_var.main_menu_sprites)
-            if global_var.sybau.ispress:
-                global_var.game_state = "transition" 
-                global_var.sybau.ispress = False
+            main_menu(game.main_menu_sprites)
+            if game.sybau.ispress:
+                game.game_state = "transition" 
+                game.sybau.ispress = False
         case "transition":
             in_game_transition()
         case "in_game":
-            in_game(global_var.pressKeyQueue)
+            in_game(game.pressKeyQueue)
         case "in_ac":
-            in_ac(global_var.pressKeyQueue)
+            in_ac(game.pressKeyQueue)
         case "in_ma_u":
-            in_ma_u(global_var.pressKeyQueue)
+            in_ma_u(game.pressKeyQueue)
         case _:
             pass
 
-    if global_var.pause_exit.ispress:
-        global_var.running = False 
+    if game.pause_exit.ispress:
+        game.running = False 
     pg.display.update()
 pg.quit()
