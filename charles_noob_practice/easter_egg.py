@@ -1,6 +1,7 @@
 import pygame as pg
 import random,math,os
 import setup
+import undyne_fight as undyne
 class Global_var():
     def __init__(self) -> None:
         pg.init()
@@ -16,10 +17,10 @@ class Global_var():
         self.pressKeyQueue=[]
 
         self.running=True
-        self.game_state = "main_menu" # "main_menu", "transition", "in_game", "pause_menu"
+        self.game_state = "undyne_transition"
         self.last_game_state=""
         self.last_pause_state=""
-        self.fps=45
+        self.fps=60
         #pause init
         self.is_pause=False
         
@@ -37,6 +38,7 @@ class Global_var():
         self.in_ac_wall = []
         self.in_ac_door = []
         self.in_ma_u_door = []
+        self.in_ma_u_npc=[]
         self.pause_sprites = pg.sprite.Group()
 
         self.state_pos={}
@@ -51,6 +53,8 @@ class Global_var():
         setup.map_and_bg_setup(self)
 
         setup.text_setup(self)
+
+        undyne.setup(self)
 
         #in game init
         self.last_map_x=self.kingnom.map_x
@@ -340,14 +344,15 @@ def in_ac(pressKeyQueue):
 #in ma u init
 def in_ma_u(pressKeyQueue):
     global play_animation
-    
+
     move_update(game.kingnom,
                 pressKeyQueue,
                 game.ma_u_bg,
                 game.empty_array,
                 game.empty_array,
                 game.in_ma_u_door)
-
+    game.oiiai.update(game)
+    game.oiiai.draw(game)
     if play_animation:
         draw_sence(game.ma_u_bg,
                    game.empty_array,
@@ -383,7 +388,7 @@ while game.running:
         # 偵測按鍵事件，並更新按鍵列表
         if event.type == pg.KEYDOWN:
             # 確保同一個鍵不會被重複加入
-            if event.key in [pg.K_w, pg.K_a, pg.K_s, pg.K_d]:
+            if event.key in [pg.K_w, pg.K_a, pg.K_s, pg.K_d,pg.K_f]:
                 if event.key not in game.pressKeyQueue:
                     game.pressKeyQueue.append(event.key)
 
@@ -419,6 +424,10 @@ while game.running:
             in_ac(game.pressKeyQueue)
         case "in_ma_u":
             in_ma_u(game.pressKeyQueue)
+        case "undyne_transition":
+            undyne.transition(game)
+        case "undyne_fight":
+            undyne.fight(game)
         case _:
             pass
 

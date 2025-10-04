@@ -179,7 +179,7 @@ class characterObject(pg.sprite.Sprite):
         except pg.error:
             self.image = pg.Surface(size)
             self.image.fill((0, 255, 0)) # Green placeholder
-        self.v=10
+        self.v=8
         self.rect=self.image.get_rect(center=default_center)
         self.is_move=False
         self.move_state="left"
