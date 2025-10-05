@@ -35,6 +35,16 @@ barrier_paths=[os.path.join("picture","barrier","barrier_wall_vert.png"),
     os.path.join("picture","barrier","150px-barrier.png")]
 
 door_paths=[os.path.join("picture","door","door1.png")]
+#--------undyne--------
+heart_paths=[os.path.join("picture","undyne","heart.png"),
+             os.path.join("picture","undyne","heart_black.png")]
+
+arrow_paths=[os.path.join("picture","undyne","arrow","blue.png"),
+             os.path.join("picture","undyne","arrow","red.png"),
+             os.path.join("picture","undyne","arrow","yellow.png")]
+
+shield_paths=[os.path.join("picture","undyne","shield.png"),
+              os.path.join("picture","undyne","shield_defence.png")]
 
 if __name__=="__main__":
     #pre load images as a dictionary

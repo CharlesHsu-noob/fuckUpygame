@@ -14,7 +14,8 @@ class Global_var():
         self.bg=pg.Surface(self.screen.get_size())
         self.bg=self.bg.convert()
         self.bg.fill((0,0,0)) # black
-        self.pressKeyQueue=[]
+        self.MoveKeyQueue=[]
+        self.InteractKeyQueue=[]
 
         self.running=True
         self.game_state = "undyne_transition"
@@ -54,11 +55,22 @@ class Global_var():
 
         setup.text_setup(self)
 
+        self.effect_sound=[]
+        setup.effect_sound_setup(self)
+        for effect in self.effect_sound:
+            effect.set_volume(self.defaultvol)
+
         undyne.setup(self)
 
         #in game init
         self.last_map_x=self.kingnom.map_x
         self.last_map_y=self.kingnom.map_y
+
+        #undyne init
+        self.bullet_counter=0
+        self.buttle_tick=0
+        self.shield_tick=0
+        self.create_bullet_tick=random.randint(30,90)
 
 game=Global_var()
 #----------------------------------------------------------------------------------------------
@@ -253,6 +265,8 @@ def vol_update():
     display_surface=vol_font.render(display_text, True, (0, 255, 255))
     game.screen.blit(display_surface,(game.w/2-270,game.h/2-8))
     pg.mixer.music.set_volume(game.volume_twist.current_val)
+    for effect in game.effect_sound:
+        effect.set_volume(game.defaultvol)
 
 def pause_menu(global_bg):
     game.screen.blit(global_bg,(0,0))
@@ -388,13 +402,18 @@ while game.running:
         # 偵測按鍵事件，並更新按鍵列表
         if event.type == pg.KEYDOWN:
             # 確保同一個鍵不會被重複加入
-            if event.key in [pg.K_w, pg.K_a, pg.K_s, pg.K_d,pg.K_f]:
-                if event.key not in game.pressKeyQueue:
-                    game.pressKeyQueue.append(event.key)
+            if event.key in [pg.K_w, pg.K_a, pg.K_s, pg.K_d]:
+                if event.key not in game.MoveKeyQueue:
+                    game.MoveKeyQueue.append(event.key)
+            elif event.key in [pg.K_f]:
+                if event.key not in game.InteractKeyQueue:
+                    game.InteractKeyQueue.append(event.key)
 
         if event.type == pg.KEYUP:
-            if event.key in game.pressKeyQueue:
-                game.pressKeyQueue.remove(event.key)
+            if event.key in game.MoveKeyQueue:
+                game.MoveKeyQueue.remove(event.key)
+            elif event.key in game.InteractKeyQueue:
+                game.InteractKeyQueue.remove(event.key)
     
     if game.pause_back.ispress:
         game.is_pause=False
@@ -419,15 +438,16 @@ while game.running:
         case "transition":
             in_game_transition()
         case "in_game":
-            in_game(game.pressKeyQueue)
+            in_game(game.MoveKeyQueue)
         case "in_ac":
-            in_ac(game.pressKeyQueue)
+            in_ac(game.MoveKeyQueue)
         case "in_ma_u":
-            in_ma_u(game.pressKeyQueue)
+            in_ma_u(game.MoveKeyQueue)
         case "undyne_transition":
             undyne.transition(game)
         case "undyne_fight":
-            undyne.fight(game)
+            undyne.fight_shield_update(game)
+            undyne.fight_bullet_update(game)
         case _:
             pass
 

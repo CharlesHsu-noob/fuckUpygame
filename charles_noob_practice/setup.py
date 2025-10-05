@@ -28,7 +28,7 @@ if __name__=="__main__":
 
 def object_setup(state_pos,w,h,game):
     #pause
-    game.defaultvol=0.2
+    game.defaultvol=0.1
     game.volume_rail=xo.sliderRailObject(pd.volume_rail_path,(w/2,h/2),(300,10))
     game.volume_twist=xo.sliderTwistObject(pd.volume_twist_path,(w/2,h/2),(10,27),0.0,0.4,game.defaultvol,game.volume_rail)
     game.pause_sprites.add(game.volume_rail)
@@ -85,9 +85,14 @@ def music_setup(self):
     self.music_playlist = {
         "main_menu": os.path.join(base_dir, "voice", "soundtrack", "red_sun_in_the_sky.wav"),
         "in_game": os.path.join(base_dir, "voice", "soundtrack", "german_erika.wav"),
-        "in_ma_u":os.path.join(base_dir,"voice","soundtrack","bonetrousle.wav")
+        "in_ma_u":os.path.join(base_dir,"voice","soundtrack","bonetrousle.wav"),
+        "undyne_fight":os.path.join(base_dir,"voice","soundtrack","a_true_hero.wav")
     }
     self.current_music = None # 用於追蹤目前播放的音樂
+
+def effect_sound_setup(self):
+    self.arrow_hit_shield=pg.mixer.Sound(os.path.join(base_dir,"voice","effect","undyne","undertale_ding.wav"))
+    self.effect_sound.append(self.arrow_hit_shield)
 
 def map_and_bg_setup(self):
     #map and background setup
