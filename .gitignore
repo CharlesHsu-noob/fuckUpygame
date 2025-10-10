@@ -1,3 +1,4 @@
 .vscode/settings.json
 pg_ce/
 __pycache__/
+.idea/
