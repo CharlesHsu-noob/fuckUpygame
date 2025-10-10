@@ -68,9 +68,12 @@ class Global_var():
 
         #undyne init
         self.bullet_counter=0
+        self.special_bullet_counter=0
         self.buttle_tick=0
+        self.special_buttle_tick=0
         self.shield_tick=0
         self.create_bullet_tick=random.randint(30,90)
+        self.create_special_bullet_tick=random.randint(60,180)
 
 game=Global_var()
 #----------------------------------------------------------------------------------------------

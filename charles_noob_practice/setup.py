@@ -7,6 +7,7 @@ base_dir = os.path.dirname(script_dir)
 #sys.path.insert(0, ...) 將路徑添加到清單的最前面
 sys.path.insert(0, base_dir)
 import XddObjects as xo
+#sys.path.remove(base_dir)
 if __name__=="__main__":
     pg.init()
     screeninfo=pg.display.Info()
@@ -28,7 +29,7 @@ if __name__=="__main__":
 
 def object_setup(state_pos,w,h,game):
     #pause
-    game.defaultvol=0.1
+    game.defaultvol=0.0
     game.volume_rail=xo.sliderRailObject(pd.volume_rail_path,(w/2,h/2),(300,10))
     game.volume_twist=xo.sliderTwistObject(pd.volume_twist_path,(w/2,h/2),(10,27),0.0,0.4,game.defaultvol,game.volume_rail)
     game.pause_sprites.add(game.volume_rail)

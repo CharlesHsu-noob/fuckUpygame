@@ -1,60 +1,64 @@
 import pygame as pg
 import os
 
-base_dir=os.path.dirname(__file__)
+# 修正 base_dir 的定義，使其指向專案根目錄 (fuckUpygame)
+# __file__ -> .../fuckUpygame/charles_noob_practice/picture_dictionary.py
+# os.path.dirname(__file__) -> .../fuckUpygame/charles_noob_practice
+# os.path.dirname(os.path.dirname(__file__)) -> .../fuckUpygame
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 #path setup,excluding map and background
 #one path for one object
-volume_rail_path=os.path.join("picture","sound_slider","slider_rail.png")
-volume_twist_path=os.path.join("picture","sound_slider","slider_twist.png")
-mrbeast_path=os.path.join("picture","MrBeast.png")
-milk_path=os.path.join("picture","milkdragon.png")
+volume_rail_path=os.path.join(base_dir,"picture","sound_slider","slider_rail.png")
+volume_twist_path=os.path.join(base_dir,"picture","sound_slider","slider_twist.png")
+mrbeast_path=os.path.join(base_dir,"picture","MrBeast.png")
+milk_path=os.path.join(base_dir,"picture","milkdragon.png")
 #multiple path for one object
-sybau_paths=[os.path.join("picture", "sybau", "sybau1.png"),
-             os.path.join("picture", "sybau", "sybau2.png"),
-             os.path.join("picture", "sybau", "sybau3.png")]
+sybau_paths=[os.path.join(base_dir,"picture", "sybau", "sybau1.png"),
+             os.path.join(base_dir,"picture", "sybau", "sybau2.png"),
+             os.path.join(base_dir,"picture", "sybau", "sybau3.png")]
 
-exit_paths=[os.path.join("picture", "exit", "exit1.png"),
-            os.path.join("picture", "exit", "exit2.png"),
-            os.path.join("picture", "exit", "exit3.png")]
+exit_paths=[os.path.join(base_dir,"picture", "exit", "exit1.png"),
+            os.path.join(base_dir,"picture", "exit", "exit2.png"),
+            os.path.join(base_dir,"picture", "exit", "exit3.png")]
 
-back_paths=[os.path.join("picture", "return", "return1.png"),
-            os.path.join("picture", "return", "return2.png"),
-            os.path.join("picture", "return", "return3.png")]
+back_paths=[os.path.join(base_dir,"picture", "return", "return1.png"),
+            os.path.join(base_dir,"picture", "return", "return2.png"),
+            os.path.join(base_dir,"picture", "return", "return3.png")]
 
-kingnom_stand_paths=[os.path.join("picture", "kingnom", "kingnom_stand1.png"),
-             os.path.join("picture", "kingnom", "kingnom_stand2.png")]
+kingnom_stand_paths=[os.path.join(base_dir,"picture", "kingnom", "kingnom_stand1.png"),
+             os.path.join(base_dir,"picture", "kingnom", "kingnom_stand2.png")]
 
-kingnom_move_paths=[os.path.join("picture", "kingnom", "kingnom_move1.png"),
-    os.path.join("picture", "kingnom", "kingnom_move2.png")]
+kingnom_move_paths=[os.path.join(base_dir,"picture", "kingnom", "kingnom_move1.png"),
+    os.path.join(base_dir,"picture", "kingnom", "kingnom_move2.png")]
 
-hitler_paths=[os.path.join("picture","hitler","hitler1.png")]
+hitler_paths=[os.path.join(base_dir,"picture","hitler","hitler1.png")]
 
-barrier_paths=[os.path.join("picture","barrier","barrier_wall_vert.png"),
-    os.path.join("picture","barrier","barrier_wall_hori.png"),
-    os.path.join("picture","barrier","150px-barrier.png")]
+barrier_paths=[os.path.join(base_dir,"picture","barrier","barrier_wall_vert.png"),
+    os.path.join(base_dir,"picture","barrier","barrier_wall_hori.png"),
+    os.path.join(base_dir,"picture","barrier","150px-barrier.png")]
 
-door_paths=[os.path.join("picture","door","door1.png")]
+door_paths=[os.path.join(base_dir,"picture","door","door1.png")]
 #--------undyne--------
-heart_paths=[os.path.join("picture","undyne","heart.png"),
-             os.path.join("picture","undyne","heart_black.png")]
+heart_paths=[os.path.join(base_dir,"picture","undyne","heart.png"),
+             os.path.join(base_dir,"picture","undyne","heart_black.png")]
 
-arrow_paths=[os.path.join("picture","undyne","arrow","blue.png"),
-             os.path.join("picture","undyne","arrow","red.png"),
-             os.path.join("picture","undyne","arrow","yellow.png")]
+arrow_paths=[os.path.join(base_dir,"picture","undyne","arrow","blue.png"),
+             os.path.join(base_dir,"picture","undyne","arrow","red.png"),
+             os.path.join(base_dir,"picture","undyne","arrow","yellow.png")]
 
-shield_paths=[os.path.join("picture","undyne","shield.png"),
-              os.path.join("picture","undyne","shield_defence.png")]
+shield_paths=[os.path.join(base_dir,"picture","undyne","shield.png"),
+              os.path.join(base_dir,"picture","undyne","shield_defence.png")]
 
 if __name__=="__main__":
     #pre load images as a dictionary
     #map and background is not included
     PICTURES={}
     #only one picture
-    PICTURES["mrbeast"]=pg.image.load(os.path.join("picture", "MrBeast.png")).convert_alpha()
-    PICTURES["milk"]=pg.image.load(os.path.join("picture", "milkdragon.png")).convert_alpha()
-    PICTURES["slider_rail"]=pg.image.load(os.path.join("picture", "sound_slider", "slider_rail.png")).convert_alpha()
-    PICTURES["slider_twist"]=pg.image.load(os.path.join("picture", "sound_slider", "slider_twist.png")).convert_alpha()
+    PICTURES["mrbeast"]=pg.image.load(mrbeast_path).convert_alpha()
+    PICTURES["milk"]=pg.image.load(milk_path).convert_alpha()
+    PICTURES["slider_rail"]=pg.image.load(volume_rail_path).convert_alpha()
+    PICTURES["slider_twist"]=pg.image.load(volume_twist_path).convert_alpha()
     #multiple pictures
     PICTURES["sybau1"]=pg.image.load(sybau_paths[0]).convert_alpha()
     PICTURES["sybau2"]=pg.image.load(sybau_paths[1]).convert_alpha()
