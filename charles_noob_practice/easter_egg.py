@@ -449,7 +449,7 @@ while game.running:
         case "undyne_transition":
             undyne.transition(game)
         case "undyne_fight":
-            undyne.fight_shield_update(game)
+            undyne.fight_bg_pattern_update(game)
             undyne.fight_bullet_update(game)
         case _:
             pass

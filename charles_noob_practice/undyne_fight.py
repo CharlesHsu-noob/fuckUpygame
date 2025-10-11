@@ -54,6 +54,7 @@ class heart(pg.sprite.Sprite):
         self.flash_timer = 0       # 閃爍計時器 (總共要閃爍多少幀)
         self.flash_interval = 3    # 閃爍間隔 (每 x 幀切換一次顯示/隱藏)
         self.invincible = False    # 是否處於無敵狀態
+
     def update(self):
         # --- 處理閃爍計時器 ---
         if self.is_flashing:
@@ -69,6 +70,7 @@ class heart(pg.sprite.Sprite):
             self.flash_timer = game.fps*0.5
             self.is_flashing = True
             self.invincible = True # 開啟無敵，直到閃爍結束
+            game.hp-=damage
     
     def draw(self, game):
         # 1. 計算是否應該繪製
@@ -84,14 +86,6 @@ class heart(pg.sprite.Sprite):
         # 2. 執行繪製
         if should_draw:   
             game.screen.blit(self.image,self.rect)
-    '''def draw(self, game):
-        if self.is_flashing:
-            # 檢查是否應該跳過繪製
-            if (self.flash_timer % (self.flash_interval * 2)) < self.flash_interval:
-                return # <--- 如果正在閃爍且處於隱藏幀，直接退出 draw 函式
-                
-        # 如果沒有閃爍，或閃爍中處於顯示幀，則執行正常的繪製
-        game.screen.blit(self.image, self.rect)'''
 
 class shield(pg.sprite.Sprite):
     def __init__(self,picture_paths,game) -> None:
@@ -108,6 +102,7 @@ class shield(pg.sprite.Sprite):
         self.current_deg=270
         self.r=30
         self.rotation_speed=40
+
     def update(self,game):
         if not game.MoveKeyQueue:
             return
@@ -155,6 +150,7 @@ class shield(pg.sprite.Sprite):
     def flash(self,game,flash):
         if flash:
             self.image=self.images[1]
+            game.undyne_score+=1
         if game.shield_tick%12==0:
             self.image=self.images[0]
             game.shield_tick=0
@@ -192,6 +188,7 @@ class noraml_arrow(pg.sprite.Sprite):
         else:
             self.arrive_tick=(game.h/2)/self.v
         game.bullet_counter+=1
+
     def update(self,game) -> tuple[int,int,bool,bool]:#damage,arrive_tick,shield_flash,heart_flash
         dx=[self.v,0,-self.v,0]
         dy=[0,-self.v,0,self.v]
@@ -205,7 +202,7 @@ class noraml_arrow(pg.sprite.Sprite):
             self.kill()
             return 0,self.arrive_tick,True,False 
         elif pg.sprite.collide_mask(game.heart,self):
-            #放音效
+            game.damage_taken.play()#放音效
             game.bullet_counter-=1
             self.kill()
             return 1,self.arrive_tick,False,True
@@ -237,7 +234,7 @@ class special_arrow(pg.sprite.Sprite):
         self.apper_pos=where_apper_pos[self.wrong_index]
         self.rect=self.image.get_rect(center=self.apper_pos)
 
-        self.v=4#暫時固定
+        self.v=random.randint(4,7)
         self.state="wrong direct straight"
         #wrong direct straight / rotate to right direct / right direct straight
         
@@ -245,7 +242,7 @@ class special_arrow(pg.sprite.Sprite):
         self.current_deg=pos_angle[self.wrong_index]
         self.target_deg=pos_angle[self.real_index]
         self.r=180
-        self.rotation_speed=4
+        self.rotation_speed=self.v
 
         # 保存中心點位置（用於圓周運動）
         self.center_x = self.apper_pos[0]
@@ -281,9 +278,9 @@ class special_arrow(pg.sprite.Sprite):
             #self.current_deg=self.last_deg+self.rotation_speed
             if self.current_deg==self.target_deg:
                 self.state="right direct straight"
-                if self.real_index==0 or 2:
+                if self.real_index in [0,2]:
                     self.center_y=game.h/2
-                elif self.real_index==1 or 3:
+                elif self.real_index in [1,3]:
                     self.center_x=game.w/2
                 return 0,False,False
             return 0,False,False
@@ -317,7 +314,7 @@ class special_arrow(pg.sprite.Sprite):
             self.kill()
             return 0,True,False 
         elif pg.sprite.collide_mask(game.heart,self):
-            #放音效
+            game.damage_taken.play()#放音效
             game.special_bullet_counter-=1
             self.kill()
             return 1,False,True
@@ -385,6 +382,10 @@ def setup(game):
     game.bullet=pg.sprite.Group()
     game.special_bullet=pg.sprite.Group()
 
+    game.max_hp=10
+    game.hp=game.max_hp
+    game.undyne_score=0
+
 def transition(game):
     fade_surface=pg.Surface(game.screen.get_size())
     fade_surface=fade_surface.convert()
@@ -407,7 +408,7 @@ def transition(game):
     game.heart.rect=heart_blit_rect
     game.game_state="undyne_fight"
 
-def fight_shield_update(game):
+def fight_bg_pattern_update(game):
     game.screen.fill((0,0,0))
     pg.draw.rect(
         game.screen,
@@ -423,21 +424,23 @@ def fight_shield_update(game):
         1,
         2
     )
-    game.shield.update(game)
 
 def fight_bullet_update(game):
     if game.buttle_tick>=game.create_bullet_tick:
         game.buttle_tick=0
-        game.create_bullet_tick=random.randint(30,90)
+        game.create_bullet_tick=random.randint(40,110)
         if game.bullet_counter<=8:
             game.bullet.add(noraml_arrow(pd.arrow_paths,game))
 
     if game.special_buttle_tick>=game.create_special_bullet_tick:
         game.special_buttle_tick=0
-        game.create_special_bullet_tick=random.randint(60,180)
-        if game.special_bullet_counter<=8:
+        game.create_special_bullet_tick=random.randint(80,200)
+        if game.special_bullet_counter<=5:
             game.special_bullet.add(special_arrow(pd.arrow_paths[2],game))
 
+    game.shield.update(game)
+
+    #-------normal-------------------
     bullet_color=[]
     shield_flash=False
     heart_flash=False
@@ -455,17 +458,27 @@ def fight_bullet_update(game):
         bullet.image=bullet.images[0]
         if bullet.arrive_tick==min_bullet:
             bullet.image=bullet.images[1]
-    
+    #----------------------------------
+    #-------special--------------------
     for special in game.special_bullet.sprites():
         damage,shield_flash,heart_flash=special.update(game)
         game.shield.flash(game,shield_flash)
         special.draw(game)
         if heart_flash:
             game.heart.take_damage(game,damage)
+    #----------------------------------
+
+    if game.hp<=0:
+        game.game_state="undyne_game_over"
 
     game.heart.update()
-
+    hp_text=f"HP: {int(game.hp)}/{int(game.max_hp)}"
+    hp_surface=game.pixel_font.render(hp_text,False,(240,240,240))
+    game.screen.blit(hp_surface,(game.w*0.15,game.h-40))
     game.heart.draw(game)
+    score_text=f"score:{int(game.undyne_score)}"
+    score_surface=game.pixel_font.render(score_text,False,(240,240,240))
+    game.screen.blit(score_surface,(game.w*0.15,20))
     game.shield.draw(game)
     game.bullet.draw(game.screen)
     game.buttle_tick+=1
@@ -474,3 +487,5 @@ def fight_bullet_update(game):
     if game.shield_tick>=12:
         game.shield_tick=0
     game.shield_tick+=1
+
+#def game_over(game):

@@ -29,7 +29,7 @@ if __name__=="__main__":
 
 def object_setup(state_pos,w,h,game):
     #pause
-    game.defaultvol=0.1
+    game.defaultvol=0.05
     game.volume_rail=xo.sliderRailObject(pd.volume_rail_path,(w/2,h/2),(300,10))
     game.volume_twist=xo.sliderTwistObject(pd.volume_twist_path,(w/2,h/2),(10,27),0.0,0.4,game.defaultvol,game.volume_rail)
     game.pause_sprites.add(game.volume_rail)
@@ -94,6 +94,8 @@ def music_setup(self):
 def effect_sound_setup(self):
     self.arrow_hit_shield=pg.mixer.Sound(os.path.join(base_dir,"voice","effect","undyne","undertale_ding.wav"))
     self.effect_sound.append(self.arrow_hit_shield)
+    self.damage_taken=pg.mixer.Sound(os.path.join(base_dir,"voice","effect","undyne","undertale_damage_taken.wav"))
+    self.effect_sound.append(self.damage_taken)
 
 def map_and_bg_setup(self):
     #map and background setup
@@ -134,3 +136,6 @@ def text_setup(self):
 
     #in game
     self.pos_font=pg.font.SysFont("times new roman",20)
+
+    #undyne
+    self.pixel_font=pg.font.Font(os.path.join(base_dir,"font","8bitOperatorPlus-Bold.ttf"))
