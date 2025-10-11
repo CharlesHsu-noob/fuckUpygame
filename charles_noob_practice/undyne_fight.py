@@ -215,18 +215,19 @@ class special_arrow(pg.sprite.Sprite):
     def __init__(self,picture_path,game) -> None:
         super().__init__()
         size=(30,20)
-        self.image=pg.transform.scale(pg.image.load(picture_path).convert_alpha(),size)
-        angle=[0,90,180,270]#箭頭方向  0:向右  90:向上  180:向左  270:向下
-        pos_angle=[180,270,0,90]
+        self.original_image=pg.transform.scale(pg.image.load(picture_path).convert_alpha(),size)
+        
+        angle=[0.0,90.0,180.0,270.0]#箭頭方向  0:向右  90:向上  180:向左  270:向下
+        pos_angle=[180.0,90.0,0.0,270.0]
         #where_apper=["left","bottom","right","top"]#從哪裡出現
-        where_apper_pos=[(0,game.h/2),
+        where_apper_pos=[(0.0,game.h/2),
                          (game.w/2,game.h),
                          (game.w,game.h/2),
-                         (game.w/2,0)]
+                         (game.w/2,0.0)]
 
         self.real_index=random.randint(0,3)#真正的行進方向
         self.angle=angle[self.real_index]#箭頭方向兼表示正確方位
-        self.image=pg.transform.rotate(self.image,self.angle)
+        self.image=pg.transform.rotate(self.original_image,self.angle)
         
         #不會發生箭頭方向跟出現方位匹配
         self.wrong_index=random.randint(0,3)
@@ -240,19 +241,24 @@ class special_arrow(pg.sprite.Sprite):
         self.state="wrong direct straight"
         #wrong direct straight / rotate to right direct / right direct straight
         
-        # 用來製作旋轉動畫的變
-        self.current_deg=angle[self.wrong_index]
+        # 用來製作旋轉動畫的變數
+        self.current_deg=pos_angle[self.wrong_index]
         self.target_deg=pos_angle[self.real_index]
-        self.r=200
-        self.rotation_speed=20
+        self.r=180
+        self.rotation_speed=4
 
-        print("(real,wrong)angle:",self.target_deg,self.current_deg,
-              "index:",self.real_index,self.wrong_index)
+        # 保存中心點位置（用於圓周運動）
+        self.center_x = self.apper_pos[0]
+        self.center_y = self.apper_pos[1]
+
+        #print("(real,wrong)angle:",self.target_deg,self.current_deg,
+        #      "index:",self.real_index,self.wrong_index)
 
     def _smooth_rotate(self):
+        #print("current,target:", self.current_deg, self.target_deg)
         # 計算當前角度和目標角度之間最短的路徑差值
         delta_deg = self.target_deg - self.current_deg
-        
+        #print("delta_deg:",delta_deg)
         # 處理循環：確保旋轉不會繞遠路 (例如從 10度到 350度，應該逆時針轉 20度，而不是順時針轉 340度)
         if delta_deg > 180:
             delta_deg -= 360
@@ -265,26 +271,32 @@ class special_arrow(pg.sprite.Sprite):
             self.current_deg += self.rotation_speed# 順時針(Pygame正)
         else:
             self.current_deg -=self.rotation_speed# 逆時針(Pygame負)
+
         # 5. 校正 current_deg，確保它維持在 0 到 360 之間
-        #self.current_deg %= 360
+        self.current_deg %= 360
 
     def update(self,game) -> tuple[int,bool,bool]:#damage,shield_flash,heart_flash
-        self._smooth_rotate()
-        '''if self.state=="rotate to right direct":
-            #self._smooth_rotate()
+        if self.state=="rotate to right direct":
+            self._smooth_rotate()
             #self.current_deg=self.last_deg+self.rotation_speed
             if self.current_deg==self.target_deg:
                 self.state="right direct straight"
+                if self.real_index==0 or 2:
+                    self.center_y=game.h/2
+                elif self.real_index==1 or 3:
+                    self.center_x=game.w/2
                 return 0,False,False
-            return 0,False,False'''
+            return 0,False,False
 
         dx=[self.v,0,-self.v,0]
         dy=[0,-self.v,0,self.v]
 
         if self.state=="wrong direct straight":
-            self.rect.centerx+=dx[self.wrong_index]
-            self.rect.centery+=dy[self.wrong_index]
-            if abs(self.rect.centerx-game.w/2)+abs(self.rect.centery-game.h/2)<=self.r:
+            self.center_x+=dx[self.wrong_index]
+            self.center_y+=dy[self.wrong_index]
+            self.rect.centerx=self.center_x
+            self.rect.centery=self.center_y
+            if abs(self.center_x-game.w/2)+abs(self.center_y-game.h/2)<=self.r:
                 self.state="rotate to right direct"
             return 0,False,False
         elif self.state=="rotate to right direct":
@@ -294,29 +306,31 @@ class special_arrow(pg.sprite.Sprite):
             return 0,False,False
         
         if self.state=="right direct straight":
-            self.rect.centerx+=dx[self.real_index]
-            self.rect.centery+=dy[self.real_index]
+            self.center_x+=dx[self.real_index]
+            self.center_y+=dy[self.real_index]
+            self.rect.centerx=self.center_x
+            self.rect.centery=self.center_y
 
         if pg.sprite.collide_rect(game.shield,self):
             game.arrow_hit_shield.play()
-            game.bullet_counter-=1
+            game.special_bullet_counter-=1
             self.kill()
             return 0,True,False 
         elif pg.sprite.collide_mask(game.heart,self):
             #放音效
-            game.bullet_counter-=1
+            game.special_bullet_counter-=1
             self.kill()
             return 1,False,True
         else:return 0,False,False
     
     def draw(self,game):
-        rad = math.radians(self.current_deg)
-        self.x = game.w / 2 + math.cos(rad) * self.r
-        self.y = game.h / 2 + math.sin(rad) * self.r
-        #self.mask = pg.mask.from_surface(out_image)
-        rect = self.image.get_rect(center=(self.x, self.y))
-        #rect=(self.x,self.y)
-        self.rect=rect
+        if self.state=="rotate to right direct":
+            rad = math.radians(self.current_deg)
+            self.center_x = game.w / 2 + math.cos(rad) * self.r
+            self.center_y = game.h / 2 + math.sin(rad) * self.r
+            self.rect.centerx = self.center_x
+            self.rect.centery = self.center_y
+
         game.screen.blit(self.image, self.rect)
 
 #AI
@@ -445,6 +459,7 @@ def fight_bullet_update(game):
     for special in game.special_bullet.sprites():
         damage,shield_flash,heart_flash=special.update(game)
         game.shield.flash(game,shield_flash)
+        special.draw(game)
         if heart_flash:
             game.heart.take_damage(game,damage)
 
@@ -454,7 +469,7 @@ def fight_bullet_update(game):
     game.shield.draw(game)
     game.bullet.draw(game.screen)
     game.buttle_tick+=1
-    game.special_bullet.draw(game.screen)
+    #game.special_bullet.draw(game.screen)
     game.special_buttle_tick+=1
     if game.shield_tick>=12:
         game.shield_tick=0
