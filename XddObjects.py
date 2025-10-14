@@ -150,6 +150,41 @@ class sliderTwistObject(pg.sprite.Sprite):
             self.current_val=self.min_val+\
                             (self.max_val-self.min_val)*\
                             (self.rect.centerx-minx)/(maxx-minx)
+            
+class Slider:
+    def __init__(self, x, y, w, h, min_val=0, max_val=1, init_val=0.5):
+        self.rect = pg.Rect(x, y, w, h)       # 背景條
+        self.min_val = min_val
+        self.max_val = max_val
+        self.value = init_val
+        self.handle_radius = 12
+        self.dragging = False
+
+    def draw(self, screen):
+        # 畫底條
+        pg.draw.rect(screen, (180,180,180), self.rect, border_radius=5)
+        # 畫已填滿的部分
+        fill_w = int(self.rect.w * self.value)
+        pg.draw.rect(screen, (100,200,100), (self.rect.x, self.rect.y, fill_w, self.rect.h), border_radius=5)
+        # 畫滑塊
+        handle_x = self.rect.x + fill_w
+        handle_y = self.rect.y + self.rect.h//2
+        pg.draw.circle(screen, (50,150,50), (handle_x, handle_y), self.handle_radius)
+
+    def handle_event(self, event):
+        if event.type == pg.MOUSEBUTTONDOWN:
+            if self.rect.collidepoint(event.pos):
+                self.dragging = True
+        elif event.type == pg.MOUSEBUTTONUP:
+            self.dragging = False
+        elif event.type == pg.MOUSEMOTION:
+            if self.dragging:
+                rel_x = event.pos[0] - self.rect.x
+                self.value = max(0, min(1, rel_x / self.rect.w))
+
+    def get_value(self):
+        return self.value
+
 
 class characterObject(pg.sprite.Sprite):
     def __init__(self,picture_paths_stand,picture_paths_move,default_center,size):
