@@ -22,6 +22,9 @@ pause_btn = xo.buttonObject(#<-------look this
      os.path.join(base_dir,"picture","NoWrongWay","NoWrongWay3.png")], 
     center=(60, 60), size=(75, 75)
 )
+background=[os.path.join(base_dir,"picture", "return", "return1.png"),
+            os.path.join(base_dir,"picture", "return", "return2.png"),
+            os.path.join(base_dir,"picture", "return", "return3.png")]
 buttons = pg.sprite.Group(pause_btn)
 paused = False
 font = pg.font.Font(None, 80)
