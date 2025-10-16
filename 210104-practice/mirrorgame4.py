@@ -27,7 +27,9 @@ flashlight_img = pg.image.load(flashlight_path).convert_alpha()
 flashlight_img = pg.transform.scale(flashlight_img, (60, 60))
 
 # --- 遊戲區塊 ---
-exit_rect = pg.Rect(WIDTH-90, 300, 60, 60)          # 出口
+exit_rect = pg.Rect(WIDTH-90, 50, 60, 60)          # 出口
+obstacle_rect = pg.Rect(WIDTH-110, 130, 100, 20)  # 原本障礙物
+obstacle_rect2 = pg.Rect(500, 150, 70, 70)       # 新增障礙物
 
 # --- 鏡子設定 ---
 mirror_length = 120
@@ -54,11 +56,13 @@ start_button = pg.Rect(50, HEIGHT-80, 120, 50)
 restart_button = pg.Rect(200, HEIGHT-80, 175, 50)
 play_button = pg.Rect(WIDTH//2 - 100, HEIGHT - 120, 165, 60)
 
-# --- 畫鏡子（水平）---
+# --- 畫鏡子 ---
 def draw_mirror(mirror):
-    dx = mirror_length / 2
-    p1 = (mirror["x"] - dx, mirror["y"])
-    p2 = (mirror["x"] + dx, mirror["y"])
+    angle_rad = math.radians(mirror["angle"])
+    dx = math.cos(angle_rad) * mirror_length / 2
+    dy = math.sin(angle_rad) * mirror_length / 2
+    p1 = (mirror["x"] - dx, mirror["y"] - dy)
+    p2 = (mirror["x"] + dx, mirror["y"] + dy)
     pg.draw.line(screen, BLACK, p1, p2, mirror_thickness)
     return p1, p2
 
@@ -93,6 +97,10 @@ def draw_laser():
         if exit_rect.collidepoint(x, y):
             won = True
             return
+        # 加入第二個障礙物判定
+        if obstacle_rect.collidepoint(x, y) or obstacle_rect2.collidepoint(x, y):
+            failed = True
+            return
 
         for m in [mirror1, mirror2]:
             p1, p2 = get_mirror_points(m)
@@ -105,8 +113,10 @@ def draw_laser():
 
 # --- 幫助函式 ---
 def get_mirror_points(mirror):
-    dx = mirror_length / 2
-    return (mirror["x"] - dx, mirror["y"]), (mirror["x"] + dx, mirror["y"])
+    angle_rad = math.radians(mirror["angle"])
+    dx = math.cos(angle_rad) * mirror_length / 2
+    dy = math.sin(angle_rad) * mirror_length / 2
+    return (mirror["x"] - dx, mirror["y"] - dy), (mirror["x"] + dx, mirror["y"] + dy)
 
 def point_near_line(point, p1, p2, threshold):
     px, py = point
@@ -131,9 +141,10 @@ def draw_instructions():
     rules = [
         "光線會由手電筒發出，",
         "目標是要碰到右下角綠色正方形，",
-        "下方鏡子：← → 左右移動",
-        "上方鏡子：A / D 左右移動",
-        "調整好位置後，按下 start 開始發射雷射"
+        "射到障礙物就失敗！",
+        "下方鏡子：方向鍵 ↑↓旋轉，←→左右移動",
+        "上方鏡子：W/S旋轉，A/D左右移動",
+        "調整好角度後，按下 start 開始發射雷射"
     ]
     for i, text in enumerate(rules):
         line = small_font.render(text, True, BLACK)
@@ -176,13 +187,22 @@ while running:
         clock.tick(60)
         continue
 
-    # --- 鏡子控制（僅左右移動）---
+    # --- 鏡子控制 ---
     keys = pg.key.get_pressed()
     if not started:
+        if keys[pg.K_UP]:
+            mirror1["angle"] -= 1
+        if keys[pg.K_DOWN]:
+            mirror1["angle"] += 1
         if keys[pg.K_LEFT]:
             mirror1["x"] -= 3
         if keys[pg.K_RIGHT]:
             mirror1["x"] += 3
+
+        if keys[pg.K_w]:
+            mirror2["angle"] -= 1
+        if keys[pg.K_s]:
+            mirror2["angle"] += 1
         if keys[pg.K_a]:
             mirror2["x"] -= 3
         if keys[pg.K_d]:
@@ -195,10 +215,13 @@ while running:
     # --- 畫面更新 ---
     screen.fill(WHITE)
 
+    # 🔦 手電筒放在固定雷射座標
     flashlight_rect = flashlight_img.get_rect(center=(laser_x, laser_y))
     screen.blit(flashlight_img, flashlight_rect)
 
     pg.draw.rect(screen, GREEN, exit_rect)
+    pg.draw.rect(screen, GRAY, obstacle_rect)
+    pg.draw.rect(screen, GRAY, obstacle_rect2)  # 畫第二個障礙物
     draw_mirror(mirror1)
     draw_mirror(mirror2)
 

@@ -27,7 +27,13 @@ flashlight_img = pg.image.load(flashlight_path).convert_alpha()
 flashlight_img = pg.transform.scale(flashlight_img, (60, 60))
 
 # --- 遊戲區塊 ---
-exit_rect = pg.Rect(WIDTH-90, 300, 60, 60)          # 出口
+exit_rect = pg.Rect(WIDTH-120, HEIGHT-120, 60, 60)          # 出口
+# 動態障礙物1：水平移動
+obstacle_rect_h = pg.Rect(WIDTH-150, HEIGHT-170, 100, 20)
+obstacle_dx = 5
+# 動態障礙物2：垂直移動
+obstacle_rect_v = pg.Rect(600, 200, 20, 100)
+obstacle_dy = 5
 
 # --- 鏡子設定 ---
 mirror_length = 120
@@ -54,11 +60,13 @@ start_button = pg.Rect(50, HEIGHT-80, 120, 50)
 restart_button = pg.Rect(200, HEIGHT-80, 175, 50)
 play_button = pg.Rect(WIDTH//2 - 100, HEIGHT - 120, 165, 60)
 
-# --- 畫鏡子（水平）---
+# --- 畫鏡子 ---
 def draw_mirror(mirror):
-    dx = mirror_length / 2
-    p1 = (mirror["x"] - dx, mirror["y"])
-    p2 = (mirror["x"] + dx, mirror["y"])
+    angle_rad = math.radians(mirror["angle"])
+    dx = math.cos(angle_rad) * mirror_length / 2
+    dy = math.sin(angle_rad) * mirror_length / 2
+    p1 = (mirror["x"] - dx, mirror["y"] - dy)
+    p2 = (mirror["x"] + dx, mirror["y"] + dy)
     pg.draw.line(screen, BLACK, p1, p2, mirror_thickness)
     return p1, p2
 
@@ -93,6 +101,9 @@ def draw_laser():
         if exit_rect.collidepoint(x, y):
             won = True
             return
+        if obstacle_rect_h.collidepoint(x, y) or obstacle_rect_v.collidepoint(x, y):
+            failed = True
+            return
 
         for m in [mirror1, mirror2]:
             p1, p2 = get_mirror_points(m)
@@ -105,8 +116,12 @@ def draw_laser():
 
 # --- 幫助函式 ---
 def get_mirror_points(mirror):
-    dx = mirror_length / 2
-    return (mirror["x"] - dx, mirror["y"]), (mirror["x"] + dx, mirror["y"])
+    angle_rad = math.radians(mirror["angle"])
+    dx = math.cos(angle_rad) * mirror_length / 2
+    dy = math.sin(angle_rad) * mirror_length / 2
+    p1 = (mirror["x"] - dx, mirror["y"] - dy)
+    p2 = (mirror["x"] + dx, mirror["y"] + dy)
+    return p1, p2
 
 def point_near_line(point, p1, p2, threshold):
     px, py = point
@@ -131,9 +146,10 @@ def draw_instructions():
     rules = [
         "光線會由手電筒發出，",
         "目標是要碰到右下角綠色正方形，",
-        "下方鏡子：← → 左右移動",
-        "上方鏡子：A / D 左右移動",
-        "調整好位置後，按下 start 開始發射雷射"
+        "射到障礙物就失敗！",
+        "下方鏡子：方向鍵 ↑↓旋轉，←→左右移動",
+        "上方鏡子：W/S旋轉，A/D左右移動",
+        "調整好角度後，按下 start 開始發射雷射"
     ]
     for i, text in enumerate(rules):
         line = small_font.render(text, True, BLACK)
@@ -176,42 +192,69 @@ while running:
         clock.tick(60)
         continue
 
-    # --- 鏡子控制（僅左右移動）---
+    # --- 鏡子控制 ---
     keys = pg.key.get_pressed()
     if not started:
+        # 下方鏡子
+        if keys[pg.K_UP]:
+            mirror1["angle"] -= 1
+        if keys[pg.K_DOWN]:
+            mirror1["angle"] += 1
         if keys[pg.K_LEFT]:
             mirror1["x"] -= 3
         if keys[pg.K_RIGHT]:
             mirror1["x"] += 3
+        # 上方鏡子
+        if keys[pg.K_w]:
+            mirror2["angle"] -= 1
+        if keys[pg.K_s]:
+            mirror2["angle"] += 1
         if keys[pg.K_a]:
             mirror2["x"] -= 3
         if keys[pg.K_d]:
             mirror2["x"] += 3
-
+        # 限制鏡子邊界
         for m in [mirror1, mirror2]:
             m["x"] = max(60, min(WIDTH - 60, m["x"]))
             m["y"] = max(60, min(HEIGHT - 60, m["y"]))
 
+    # --- 動態障礙物移動 ---
+    # 水平
+    obstacle_rect_h.x += obstacle_dx
+    if obstacle_rect_h.right >= WIDTH or obstacle_rect_h.left <= 0:
+        obstacle_dx *= -1
+    # 垂直
+    obstacle_rect_v.y += obstacle_dy
+    if obstacle_rect_v.bottom >= HEIGHT or obstacle_rect_v.top <= 0:
+        obstacle_dy *= -1
+
     # --- 畫面更新 ---
     screen.fill(WHITE)
 
+    # 🔦 手電筒
     flashlight_rect = flashlight_img.get_rect(center=(laser_x, laser_y))
     screen.blit(flashlight_img, flashlight_rect)
 
+    # 出口和障礙物
     pg.draw.rect(screen, GREEN, exit_rect)
+    pg.draw.rect(screen, GRAY, obstacle_rect_h)
+    pg.draw.rect(screen, GRAY, obstacle_rect_v)
+
+    # 畫鏡子
     draw_mirror(mirror1)
     draw_mirror(mirror2)
 
+    # 畫雷射
     if started and len(laser_path) > 1:
         pg.draw.lines(screen, RED, False, laser_path, 2)
 
-    # --- 按鈕 ---
+    # 畫按鈕
     pg.draw.rect(screen, (200,200,200), start_button)
     pg.draw.rect(screen, (200,200,200), restart_button)
     screen.blit(font.render("start", True, BLACK), (start_button.x+20, start_button.y))
     screen.blit(font.render("try again", True, BLACK), (restart_button.x+20, restart_button.y))
 
-    # --- 結果顯示 ---
+    # 結果顯示
     if won:
         screen.blit(font.render("success!", True, RED), (WIDTH-200, HEIGHT-100))
     elif failed:
