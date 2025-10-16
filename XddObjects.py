@@ -152,24 +152,37 @@ class sliderTwistObject(pg.sprite.Sprite):
                             (self.rect.centerx-minx)/(maxx-minx)
             
 class Slider:
-    def __init__(self, x, y, w, h, min_val=0, max_val=1, init_val=0.5):
-        self.rect = pg.Rect(x, y, w, h)       # 背景條
+    def __init__(
+        self, x, y, w, h,
+        min_val=0, max_val=1, init_val=0.5,
+        bg_color=(180,180,180),     # ← 背景條顏色
+        fill_color=(100,200,100),   # ← 已填滿顏色
+        handle_color=(50,150,50)    # ← 滑塊顏色
+    ):
+        self.rect = pg.Rect(x, y, w, h)
         self.min_val = min_val
         self.max_val = max_val
         self.value = init_val
-        self.handle_radius = 12
+        self.handle_radius = 10
         self.dragging = False
+
+        # 顏色屬性
+        self.bg_color = bg_color
+        self.fill_color = fill_color
+        self.handle_color = handle_color
 
     def draw(self, screen):
         # 畫底條
-        pg.draw.rect(screen, (180,180,180), self.rect, border_radius=5)
+        pg.draw.rect(screen, self.bg_color, self.rect, border_radius=5)
+
         # 畫已填滿的部分
         fill_w = int(self.rect.w * self.value)
-        pg.draw.rect(screen, (100,200,100), (self.rect.x, self.rect.y, fill_w, self.rect.h), border_radius=5)
+        pg.draw.rect(screen, self.fill_color, (self.rect.x, self.rect.y, fill_w, self.rect.h), border_radius=5)
+
         # 畫滑塊
         handle_x = self.rect.x + fill_w
-        handle_y = self.rect.y + self.rect.h//2
-        pg.draw.circle(screen, (50,150,50), (handle_x, handle_y), self.handle_radius)
+        handle_y = self.rect.y + self.rect.h // 2
+        pg.draw.circle(screen, self.handle_color, (handle_x, handle_y), self.handle_radius)
 
     def handle_event(self, event):
         if event.type == pg.MOUSEBUTTONDOWN:
