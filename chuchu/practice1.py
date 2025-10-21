@@ -121,5 +121,3 @@ while True:
         screen.blit(exit_text, exit_rect)
 
     pg.display.flip()
-
-
