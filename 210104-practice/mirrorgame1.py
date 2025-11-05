@@ -41,8 +41,9 @@ won = False
 failed = False
 laser_path = []
 show_instructions = True
+selected_mirror = 1  # 1 代表鏡子1，2 代表鏡子2
 
-# --- 雷射光發射座標 (固定) ---
+# --- 雷射光發射座標 ---
 laser_x, laser_y = 80, 50
 
 # --- 字型 ---
@@ -54,11 +55,13 @@ start_button = pg.Rect(50, HEIGHT-80, 120, 50)
 restart_button = pg.Rect(200, HEIGHT-80, 175, 50)
 play_button = pg.Rect(WIDTH//2 - 100, HEIGHT - 120, 165, 60)
 
-# --- 畫鏡子（水平）---
+# --- 畫鏡子 ---
 def draw_mirror(mirror):
-    dx = mirror_length / 2
-    p1 = (mirror["x"] - dx, mirror["y"])
-    p2 = (mirror["x"] + dx, mirror["y"])
+    angle_rad = math.radians(mirror["angle"])
+    dx = math.cos(angle_rad) * mirror_length / 2
+    dy = math.sin(angle_rad) * mirror_length / 2
+    p1 = (mirror["x"] - dx, mirror["y"] - dy)
+    p2 = (mirror["x"] + dx, mirror["y"] + dy)
     pg.draw.line(screen, BLACK, p1, p2, mirror_thickness)
     return p1, p2
 
@@ -74,6 +77,27 @@ def reflect_vector(vx, vy, x1, y1, x2, y2):
     rx = vx - 2 * dot * nx
     ry = vy - 2 * dot * ny
     return rx, ry
+
+# --- 幫助函式 ---
+def get_mirror_points(mirror):
+    angle_rad = math.radians(mirror["angle"])
+    dx = math.cos(angle_rad) * mirror_length / 2
+    dy = math.sin(angle_rad) * mirror_length / 2
+    return (mirror["x"] - dx, mirror["y"] - dy), (mirror["x"] + dx, mirror["y"] + dy)
+
+def point_near_line(point, p1, p2, threshold):
+    px, py = point
+    x1, y1 = p1
+    x2, y2 = p2
+    dx, dy = x2 - x1, y2 - y1
+    if dx == dy == 0:
+        return False
+    t = ((px - x1) * dx + (py - y1) * dy) / (dx*dx + dy*dy)
+    t = max(0, min(1, t))
+    nearest_x = x1 + t*dx
+    nearest_y = y1 + t*dy
+    dist = math.hypot(px - nearest_x, py - nearest_y)
+    return dist < threshold
 
 # --- 雷射反射 ---
 def draw_laser():
@@ -103,25 +127,6 @@ def draw_laser():
             failed = True
             return
 
-# --- 幫助函式 ---
-def get_mirror_points(mirror):
-    dx = mirror_length / 2
-    return (mirror["x"] - dx, mirror["y"]), (mirror["x"] + dx, mirror["y"])
-
-def point_near_line(point, p1, p2, threshold):
-    px, py = point
-    x1, y1 = p1
-    x2, y2 = p2
-    dx, dy = x2 - x1, y2 - y1
-    if dx == dy == 0:
-        return False
-    t = ((px - x1) * dx + (py - y1) * dy) / (dx*dx + dy*dy)
-    t = max(0, min(1, t))
-    nearest_x = x1 + t*dx
-    nearest_y = y1 + t*dy
-    dist = math.hypot(px - nearest_x, py - nearest_y)
-    return dist < threshold
-
 # --- 說明畫面 ---
 def draw_instructions():
     screen.fill(WHITE)
@@ -131,8 +136,8 @@ def draw_instructions():
     rules = [
         "光線會由手電筒發出，",
         "目標是要碰到右下角綠色正方形，",
-        "下方鏡子：← → 左右移動",
-        "上方鏡子：A / D 左右移動",
+        "← →：選擇鏡子",
+        "A / D：左右移動鏡子",
         "調整好位置後，按下 start 開始發射雷射"
     ]
     for i, text in enumerate(rules):
@@ -176,32 +181,42 @@ while running:
         clock.tick(60)
         continue
 
-    # --- 鏡子控制（僅左右移動）---
     keys = pg.key.get_pressed()
     if not started:
+        # 鏡子選擇（左右鍵）
         if keys[pg.K_LEFT]:
-            mirror1["x"] -= 3
-        if keys[pg.K_RIGHT]:
-            mirror1["x"] += 3
-        if keys[pg.K_a]:
-            mirror2["x"] -= 3
-        if keys[pg.K_d]:
-            mirror2["x"] += 3
+            selected_mirror = 1
+        elif keys[pg.K_RIGHT]:
+            selected_mirror = 2
 
-        for m in [mirror1, mirror2]:
-            m["x"] = max(60, min(WIDTH - 60, m["x"]))
-            m["y"] = max(60, min(HEIGHT - 60, m["y"]))
+        # 取得目前控制的鏡子
+        current = mirror1 if selected_mirror == 1 else mirror2
+
+        # A/D 控制左右移動
+        if keys[pg.K_a]:
+            current["x"] -= 3
+        if keys[pg.K_d]:
+            current["x"] += 3
+
+        # 限制邊界
+        current["x"] = max(60, min(WIDTH - 60, current["x"]))
+        current["y"] = max(60, min(HEIGHT - 60, current["y"]))
 
     # --- 畫面更新 ---
     screen.fill(WHITE)
-
     flashlight_rect = flashlight_img.get_rect(center=(laser_x, laser_y))
     screen.blit(flashlight_img, flashlight_rect)
-
     pg.draw.rect(screen, GREEN, exit_rect)
-    draw_mirror(mirror1)
-    draw_mirror(mirror2)
 
+    # --- 畫鏡子 ---
+    p1, p2 = draw_mirror(mirror1)
+    p3, p4 = draw_mirror(mirror2)
+
+    # 畫選取提示
+    selected = mirror1 if selected_mirror == 1 else mirror2
+    pg.draw.circle(screen, RED, (int(selected["x"]), int(selected["y"])), 10, 2)
+
+    # --- 畫雷射 ---
     if started and len(laser_path) > 1:
         pg.draw.lines(screen, RED, False, laser_path, 2)
 
