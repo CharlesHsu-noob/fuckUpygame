@@ -41,11 +41,16 @@ bg_size = (int(background.get_width() * 0.4),
            int(background.get_height() * 0.5))
 background = pg.transform.scale(background, bg_size)
 bg_rect = background.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-
+'''
 # === 字體 ===
 font_big = pg.font.Font("C:\\Windows\\Fonts\\msjh.ttc", 50)   # 遊戲名稱
 font_mid = pg.font.Font("C:\\Windows\\Fonts\\msjh.ttc", 25)   # 繼續/退出
 font_small = pg.font.Font("C:\\Windows\\Fonts\\msjh.ttc", 15) # 音量
+'''
+# === 字體 ===
+font_big = pg.font.Font(os.path.join(base_dir,"font","msjh.ttf"),50)   # 遊戲名稱
+font_mid = pg.font.Font(os.path.join(base_dir,"font","msjh.ttf"),25)   #繼續遊戲
+font_small = pg.font.Font(os.path.join(base_dir,"font","msjh.ttf"),15) # 音量
 
 # --- 繼續遊戲 ---
 continue_text = font_mid.render("繼續遊戲", True, (132, 132, 132))
