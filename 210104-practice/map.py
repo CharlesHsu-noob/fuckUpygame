@@ -22,7 +22,7 @@ RED = (220, 50, 50)
 BLUE = (60, 140, 220)
 YELLOW = (235, 210, 80)
 
-font = pg.font.SysFont("Microsoft JhengHei", 16)
+font = pg.font.SysFont("Microsoft JhengHei", 18)
 
 screen = pg.display.set_mode((WIDTH, HEIGHT))
 pg.display.set_caption("Bob")
@@ -83,8 +83,8 @@ class Player:
 grid = [[Tile(c, r) for r in range(ROWS)] for c in range(COLS)]
 
 # 示範鏡子
-grid[5][5].mirror = Mirror(45)
-grid[11][4].mirror = Mirror(135)
+grid[0][5].mirror = Mirror(45)
+grid[0][4].mirror = Mirror(45)
 
 player = Player(1, 1)
 
@@ -261,8 +261,8 @@ while running:
                 for c in range(COLS):
                     for r in range(ROWS):
                         grid[c][r].mirror = None
-                grid[5][5].mirror = Mirror(45)
-                grid[11][4].mirror = Mirror(135)
+                grid[0][5].mirror = Mirror(45)
+                grid[0][4].mirror = Mirror(45)
                 player.holding = None
                 player.adjust_mode = False
                 laser_path_cache = []
