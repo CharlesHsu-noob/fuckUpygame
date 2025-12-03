@@ -83,14 +83,25 @@ def draw_flip_buttons(surface, mouse_pos):
                                      (right_rect.left, right_rect.bottom),
                                      (right_rect.right, right_rect.centery)])
 
-# === 第二頁：五個框框 ===
+# === 第一頁：角色 ===
 box_w, box_h = 60, 110
-left_page_x1 = bg_rect.centerx - bg_rect.width//2 + 40  # 左頁左邊
-top_y = bg_rect.top + 100  # 書本上方一段距離
+left_page_x1 = bg_rect.centerx - bg_rect.width//2 + 40 
+top_y = bg_rect.top + 100  
 boxes_chars = []
 for i in range(5):
     x = left_page_x1 + i * box_w
     boxes_chars.append(pg.Rect(x, top_y, box_w, box_h))
+
+# === 第二頁：物品欄 ===
+box2_w, box2_h = 200, 50
+x2 = bg_rect.centerx + bg_rect.width//10
+
+boxes_items = []
+start_y = bg_rect.top + 230
+
+for i in range(5):
+    y = start_y + i * box2_h
+    boxes_items.append(pg.Rect(x2, y, box2_w, box2_h))
 
 # 框框對應的細節資訊
 boxes_info = [
@@ -109,22 +120,8 @@ boxes_items_info = [
     {"name": "道具E", "desc": "魔法回復藥水", "value": 4},
 ]
 
-
-# === 第二頁：物品欄 ===
-box2_w, box2_h = 200, 50
-x2 = bg_rect.centerx + bg_rect.width//2 + 40  # 左頁左邊
-y = bg_rect.top + 100  # 書本上方一段距離
-boxes_items = []
-for i in range(5):
-    y = bg_rect.top + 100 + i * box2_h
-    boxes_items.append(pg.Rect(x2, y, box2_w, box2_h))
-
-
-def draw_page2(surface, mouse_pos, selected_char=None, selected_item=None):
-    # --- 左頁角色框框 ---
-    box_w, box_h = 60, 110
-    left_page_x1 = bg_rect.centerx - bg_rect.width//2 + 40
-    top_y = bg_rect.top + 100
+def draw_page2(surface, mouse_pos, selected_char, selected_item):
+    # --- 畫角色框框 ---
     for i, rect in enumerate(boxes_chars):
         if selected_char == i:
             color = (220, 220, 220)
@@ -134,7 +131,7 @@ def draw_page2(surface, mouse_pos, selected_char=None, selected_item=None):
             color = (132, 132, 132)
         pg.draw.rect(surface, color, rect, width=3)
 
-    # --- 右頁物品框框 ---
+    # --- 畫物品框框 ---
     for i, rect in enumerate(boxes_items):
         if selected_item == i:
             color = (220, 220, 220)
@@ -144,43 +141,44 @@ def draw_page2(surface, mouse_pos, selected_char=None, selected_item=None):
             color = (132, 132, 132)
         pg.draw.rect(surface, color, rect, width=3)
 
-    # --- 左下大框框 (角色資訊) ---
+    # 左下角色資訊框
     info_panel_w = bg_rect.width // 2 - 100
     info_panel_h = 160
+    right_h = 120
     info_panel_x = bg_rect.left + 60
     info_panel_y = bg_rect.bottom - info_panel_h - 100
-    pg.draw.rect(surface, (132, 132, 132), (info_panel_x, info_panel_y, info_panel_w, info_panel_h), width=3)
+    info_panel_rect = pg.Rect(info_panel_x, info_panel_y, info_panel_w, info_panel_h)
+    pg.draw.rect(surface, (132,132,132), info_panel_rect, width=3)
 
-    # --- 右上大框框 (物品資訊) ---
-    info_2_x = bg_rect.left + 420
-    info_2_y = bg_rect.top + 100
-    pg.draw.rect(surface, (132, 132, 132), (info_2_x, info_2_y, info_panel_w, info_panel_h), width=3)
-
-    # --- 顯示角色資訊 ---
+    # 顯示角色資訊
     if selected_char is not None:
         info = boxes_info[selected_char]
-        name_text = font_mid.render(info["name"], True, (132, 132, 132))
-        desc_text = font_small.render(info["desc"], True, (132, 132, 132))
-        value_text = font_small.render(f"數值: {info['value']}", True, (132, 132, 132))
+        name_text = font_mid.render(info["name"], True, (132,132,132))
+        desc_text = font_small.render(info["desc"], True, (132,132,132))
+        value_text = font_small.render(f"數值: {info['value']}", True, (132,132,132))
         surface.blit(name_text, (info_panel_x + 15, info_panel_y + 10))
         surface.blit(desc_text, (info_panel_x + 15, info_panel_y + 50))
         surface.blit(value_text, (info_panel_x + 15, info_panel_y + 80))
     else:
-        hint_text = font_small.render("點擊上方角色以查看詳細資訊", True, (132, 132, 132))
+        hint_text = font_small.render("選擇上方角色以查看詳細資訊", True, (132,132,132))
         surface.blit(hint_text, (info_panel_x + 15, info_panel_y + 10))
 
-    # --- 顯示物品資訊 ---
+    # 右上物品資訊框
+    info2_x = bg_rect.left + 420
+    info2_y = bg_rect.top + 100
+    info2_rect = pg.Rect(info2_x, info2_y, info_panel_w, right_h)
+    pg.draw.rect(surface, (132,132,132), info2_rect, width=3)
+
+    # 顯示物品資訊
     if selected_item is not None:
-        item = boxes_items_info[selected_item]  # 你需要定義物品資訊列表
-        name_text = font_mid.render(item["name"], True, (132, 132, 132))
-        desc_text = font_small.render(item["desc"], True, (132, 132, 132))
-        value_text = font_small.render(f"數量: {item['value']}", True, (132, 132, 132))
-        surface.blit(name_text, (info_2_x + 15, info_2_y + 10))
-        surface.blit(desc_text, (info_2_x + 15, info_2_y + 50))
-        surface.blit(value_text, (info_2_x + 15, info_2_y + 80))
+        info = boxes_items_info[selected_item]  # 你需要建立對應物品資訊列表
+        name_text = font_mid.render(info["name"], True, (132,132,132))
+        desc_text = font_small.render(info["desc"], True, (132,132,132))
+        surface.blit(name_text, (info2_x + 15, info2_y + 10))
+        surface.blit(desc_text, (info2_x + 15, info2_y + 50))
     else:
-        hint_text = font_small.render("點擊右側物品以查看詳細資訊", True, (132, 132, 132))
-        surface.blit(hint_text, (info_2_x + 15, info_2_y + 10))
+        hint_text = font_small.render("選擇下方物品以查看詳細資訊", True, (132,132,132))
+        surface.blit(hint_text, (info2_x + 15, info2_y + 10))
 
 # ----------------------------------------------------------
 # === 主迴圈 ===
@@ -215,14 +213,12 @@ while True:
             for i, rect in enumerate(boxes_chars):
                 if rect.collidepoint(mouse_pos):
                     selected_char = i
-                    selected_item = None
                     break
             else:
                 # 物品選取
                 for i, rect in enumerate(boxes_items):
                     if rect.collidepoint(mouse_pos):
                         selected_item = i
-                        selected_char = None
                         break
         # 翻頁按鈕
         if left_rect.collidepoint(mouse_pos) or right_rect.collidepoint(mouse_pos):
