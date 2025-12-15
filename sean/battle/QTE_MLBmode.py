@@ -1,6 +1,5 @@
 import pygame, math, time, random
 
-
 class RhythmGame:
     def __init__(self):
         pygame.init()
@@ -32,7 +31,6 @@ class RhythmGame:
         self.pre_start = time.time()
 
         self.current_keys = set()
-
         self.running = True
 
     def handle_events(self):
@@ -40,7 +38,6 @@ class RhythmGame:
             if event.type == pygame.QUIT:
                 self.running = False
 
-         
             if event.type == pygame.KEYDOWN:
                 key_name = pygame.key.name(event.key).upper()
                 self.current_keys.add(key_name)
@@ -50,7 +47,6 @@ class RhythmGame:
                 if key_name in self.current_keys:
                     self.current_keys.remove(key_name)
 
-            
             if not self.animation:
                 if not self.waiting and event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                     gap = (self.pointer_angle - self.center_angle + math.pi) % (2 * math.pi) - math.pi
@@ -137,7 +133,6 @@ class RhythmGame:
             text_surf = self.font.render(self.result, True, (255, 255, 255))
             self.screen.blit(text_surf, (self.C[0] - text_surf.get_width() / 2, self.C[1] - self.R - 60))
 
-        # 顯示目前按著的鍵
         key_text = " ".join(sorted(self.current_keys))
         key_surf = self.small_font.render(f"Keys: {key_text}", True, (200, 200, 200))
         self.screen.blit(key_surf, (10, 10))
@@ -151,9 +146,18 @@ class RhythmGame:
             self.update(dt)
             self.draw()
 
-        pygame.quit()
+            # ★ 一旦有結果就結束並回傳，不退出 Pygame
+            if self.result:
+                pygame.time.delay(300)
+                self.running = False
 
+        return self.result  # 回傳結果，但不關閉外部視窗
+
+# 對外呼叫用函式
+def play_qte():
+    game = RhythmGame()
+    return game.run()
 
 if __name__ == "__main__":
-    game = RhythmGame()
-    game.run()
+    result = play_qte()
+    print("QTE Result:", result)
