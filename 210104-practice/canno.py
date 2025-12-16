@@ -30,30 +30,33 @@ pg.display.set_caption("Bob")
 
 clock = pg.time.Clock()
 
+# --- 玩家手持鏡子圖片 ---
+mirror_hold_image = pg.image.load(os.path.join('picture', 'lab_mirror_whole.png')).convert_alpha()
+mirror_hold_image = pg.transform.scale(mirror_hold_image,(int(GRID_SIZE * 0.6), int(GRID_SIZE * 0.6)))
+
+# --- 載入鏡子的底圖 ---
+mirror_base_image = pg.image.load(os.path.join('picture', 'lab_mirror_tile.png')).convert_alpha()
+mirror_base_image = pg.transform.scale(mirror_base_image, (GRID_SIZE, GRID_SIZE))  # 縮放到底圖大小
+
 # --- 修正後的圖片載入與處理（單圖旋轉） ---
 mirror_images = {}
-try:
-    # 載入原始圖片 (假設它是 45 度角圖案)
-    img_original = pg.image.load(os.path.join('picture', 'lab_mirror.png')).convert_alpha()
-    img_original = pg.transform.scale(img_original, (GRID_SIZE, GRID_SIZE))
 
-    # 45 度圖片：使用原始圖片
-    img_45 = img_original
+# 載入原始圖片 (假設它是 45 度角圖案)
+img_original = pg.image.load(os.path.join('picture', 'lab_mirror_b.png')).convert_alpha()
+img_original = pg.transform.scale(img_original, (GRID_SIZE, GRID_SIZE))
 
-    # 135 度圖片：將 45 度圖片旋轉 90 度 (逆時針) 
-    # 這樣 / 圖案就會變成 \ 圖案
-    img_135 = pg.transform.rotate(img_original, 90) 
+# 45 度圖片：使用原始圖片
+img_45 = img_original
+
+# 135 度圖片：將 45 度圖片旋轉 90 度 (逆時針) 
+# 這樣 / 圖案就會變成 \ 圖案
+img_135 = pg.transform.rotate(img_original, 90) 
     
-    # 將旋轉後的圖片儲存在字典中
-    mirror_images = {
-        45: img_45,
-        135: img_135
-    }
-
-except pg.error as e:
-    print(f"無法載入鏡子圖片: {e}")
-    print("請確保 'picture/mirror.png' 檔案存在。程式將使用線條作為替代。")
-    
+# 將旋轉後的圖片儲存在字典中
+mirror_images = {
+    45: img_45,
+    135: img_135
+}
 # ----------------- 資料結構 -----------------
 class Tile:
     def __init__(self, col, row, can_place=True):
@@ -80,6 +83,9 @@ class Mirror:
     def get_image(self):
         return mirror_images.get(self.angle)
 
+    def get_base_image(self):
+        return mirror_base_image
+
     def endpoints(self, center):
         # 這是決定反射行為的數學線段，不受繪圖方式影響
         cx, cy = center
@@ -88,6 +94,7 @@ class Mirror:
         dx = math.cos(a) * half
         dy = math.sin(a) * half
         return ((cx - dx, cy - dy), (cx + dx, cy + dy))
+
 
 class Player:
     def __init__(self, col=1, row=1):
@@ -161,6 +168,7 @@ def draw_shadow_laser(last_laser_path):
     pg.draw.lines(s, (255, 0, 0, 80), False, last_laser_path, 3)
     screen.blit(s, (0, 0))
 
+# 修改繪製鏡子的函數
 def draw_tiles_contents():
     for c in range(COLS):
         for r in range(ROWS):
@@ -169,11 +177,18 @@ def draw_tiles_contents():
                 pg.draw.rect(screen, DARK_GRAY, t.rect, 2)
                 
             if t.mirror:
+                # 先繪製鏡子的底圖
+                base_img = t.mirror.get_base_image()
+                if base_img:
+                    screen.blit(base_img, t.rect.topleft)
+                
+                # 然後繪製鏡子本身
+                
                 img = t.mirror.get_image()
-                if img:
+                if img :
                     screen.blit(img, t.rect.topleft)
                 else:
-                    # 圖片載入失敗時的回退
+                    # 如果沒有底圖，就繪製鏡子的反射線（回退）
                     p1, p2 = t.mirror.endpoints(t.center)
                     pg.draw.line(screen, BLACK, p1, p2, 6)
                     pg.draw.line(screen, YELLOW, p1, p2, 2)
@@ -182,29 +197,22 @@ def draw_tiles_contents():
 
 def draw_player():
     x, y = player.pos
-    radius = GRID_SIZE//3
+    radius = GRID_SIZE // 3
     pg.draw.circle(screen, BLUE, (x, y), radius)
+
     if player.holding:
-        mirror = player.holding
-        
-        img = mirror.get_image()
-        if img:
-            holding_size = int(GRID_SIZE * 0.6)
-            holding_img = pg.transform.scale(img, (holding_size, holding_size))
-            
-            draw_x = x - holding_size // 2
-            draw_y = y - holding_size // 2 - radius - 5
-            
-            screen.blit(holding_img, (draw_x, draw_y))
-        else:
-            # 圖片載入失敗時的回退
-            a = mirror.angle
-            half = GRID_SIZE * 0.28
-            a_rad = math.radians(a)
-            dx = math.cos(a_rad) * half
-            dy = math.sin(a_rad) * half
-            pg.draw.line(screen, BLACK, (x - dx, y - dy), (x + dx, y + dy), 5)
-            pg.draw.line(screen, YELLOW, (x - dx, y - dy), (x + dx, y + dy), 2)
+        # 複製手持鏡子圖片，避免影響原圖
+        holding_img = mirror_hold_image.copy()
+
+        # 玩家手持鏡子角度是 45，就旋轉 90 度
+        if player.holding.angle == 45:
+            holding_img = pg.transform.rotate(holding_img, 90)
+
+        draw_x = x - holding_img.get_width() // 2
+        draw_y = y - holding_img.get_height() - radius + 20
+
+        screen.blit(holding_img, (draw_x, draw_y))
+
 
 def point_near_line(point, p1, p2, threshold):
     px, py = point
@@ -327,7 +335,7 @@ while running:
                     for r in range(ROWS):
                         grid[c][r].mirror = None
                 grid[0][5].mirror = Mirror(45)
-                grid[0][4].mirror = Mirror(135) 
+                grid[0][4].mirror = Mirror(45) 
                 player.holding = None
                 player.adjust_mode = False
                 laser_path_cache = []
