@@ -1,5 +1,7 @@
 import pygame
-from QTE_MLBmode import play_qte  # QTE 函式不要自動 quit Pygame
+import random
+from QTE_DBDmode import play_qte_dbd
+from QTE_MLBmode import play_qte
 
 pygame.init()
 
@@ -20,26 +22,42 @@ MAX_ENERGY = 10
 player_energy = MAX_ENERGY
 
 # --- 字型 ---
-font = pygame.font.SysFont(None, 18)       # 血條文字
-option_font = pygame.font.SysFont(None, 18)  # 技能選項文字
+font = pygame.font.SysFont(None, 18)
+option_font = pygame.font.SysFont(None, 18)
+damage_font = pygame.font.SysFont(None, 24)
 
 # --- 選項 ---
-options = ["Normal Attack", "Special Attack", "Defend"]
+options = ["Normal Attack", "Special Attack", "Defend", "End this round"]
+energy_cost = [3, 5, 4, 0]
 selected_option = None
-pending_action = False  # 是否選擇技能但尚未按空白鍵
+pending_action = False
+temp_energy = player_energy
 
-# --- 能量需求 ---
-energy_cost = [3, 5, 4]  # 普通攻擊、特殊攻擊、防禦
-temp_energy = player_energy  # 暫時顯示能量
+# --- 動畫列表 ---
+damage_texts = []
+energy_recover_queue = []
+energy_recover_timer = [0] * MAX_ENERGY
+
+# --- Defend ---
+shield_turns = 0
+qte_queue = 0
+qte_perfect_count = 0
+qte_enemy_damage = 0
+pending_energy_recover = 0  # 延後回復能量格數
+
+# --- 能量格動畫 ---
+ENERGY_DELAY = 0.1
+recover_timer = 0
 
 running = True
 while running:
+    dt = clock.tick(60) / 1000.0
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
         if event.type == pygame.KEYDOWN:
-            # 選擇技能
+            # --- 選技能 ---
             if event.key in (pygame.K_1, pygame.K_KP1):
                 selected_option = 0
                 temp_energy = player_energy - energy_cost[0]
@@ -52,81 +70,221 @@ while running:
                 selected_option = 2
                 temp_energy = player_energy - energy_cost[2]
                 pending_action = True
+            elif event.key in (pygame.K_4, pygame.K_KP4):
+                selected_option = 3
+                temp_energy = player_energy
+                pending_action = True
 
-            # 執行技能
+            # --- 確認技能 ---
             elif event.key == pygame.K_SPACE and pending_action:
-                if selected_option is not None:
-                    cost = energy_cost[selected_option]
-                    if player_energy >= cost:
-                        player_energy -= cost
-                        # 執行技能效果
-                        if selected_option == 0:
-                            print("Used Normal Attack!")
-                        elif selected_option == 1:
-                            print("Used Special Attack! Launching QTE...")
-                            result = play_qte()
-                            print("QTE Result:", result)
-                        elif selected_option == 2:
-                            print("Used Defend!")
-                    else:
-                        print("Not enough energy!")
+                cost = energy_cost[selected_option]
+                if player_energy >= cost:
+                    player_energy -= cost
+
+                    # Normal Attack
+                    if selected_option == 0:
+                        damage = 10
+                        ENEMY_HP -= damage
+                        ENEMY_HP = max(0, ENEMY_HP)
+                        damage_texts.append({
+                            'damage': damage,
+                            'x': WIDTH - 110 + 50,
+                            'y': 10 + 15,
+                            'alpha': 255,
+                            'timer': 0,
+                            'target': 'enemy'
+                        })
+
+                    # Special Attack
+                    elif selected_option == 1:
+                        result = play_qte()
+                        if result == "MISS":
+                            damage = 10
+                        elif result == "GREAT":
+                            damage = 15
+                        elif result == "PERFECT":
+                            damage = 20
+                        ENEMY_HP -= damage
+                        ENEMY_HP = max(0, ENEMY_HP)
+                        damage_texts.append({
+                            'damage': damage,
+                            'x': WIDTH - 110 + 50,
+                            'y': 10 + 15,
+                            'alpha': 255,
+                            'timer': 0,
+                            'target': 'enemy'
+                        })
+
+                    # Defend
+                    elif selected_option == 2:
+                        shield_turns = 3
+
+                    # End this round
+                    elif selected_option == 3:
+                        enemy_multiplier = random.uniform(0.8, 1.3)
+                        enemy_damage = int(20 * enemy_multiplier)
+
+                        if shield_turns > 0:
+                            # 設置 Defend QTE
+                            qte_queue = 4
+                            qte_perfect_count = 0
+                            qte_enemy_damage = enemy_damage
+                            shield_turns -= 1
+                            pending_energy_recover = 4  # 延後回復能量格數
+                        else:
+                            # 普通扣血
+                            PLAYER_HP -= enemy_damage
+                            damage_texts.append({
+                                'damage': enemy_damage,
+                                'x': 10 + 50,
+                                'y': 10 + 15,
+                                'alpha': 255,
+                                'timer': 0,
+                                'target': 'player'
+                            })
+
+                            # 能量立即回復（逐格動畫）
+                            for _ in range(4):
+                                if player_energy < MAX_ENERGY:
+                                    energy_recover_queue.append(player_energy)
+                                    player_energy += 1
+                                    energy_recover_timer[energy_recover_queue[-1]] = 0
+
+                selected_option = None
                 pending_action = False
                 temp_energy = player_energy
+
+    # --- Defend QTE 處理 ---
+    if qte_queue > 0:
+        result = play_qte_dbd()
+        if result == "PERFECT":
+            qte_perfect_count += 1
+        qte_queue -= 1
+
+        # 四次完成後計算傷害
+        if qte_queue == 0:
+            final_damage = int(qte_enemy_damage * (1 - 0.2 * qte_perfect_count))
+            PLAYER_HP -= final_damage
+            damage_texts.append({
+                'damage': final_damage,
+                'x': 10 + 50,
+                'y': 10 + 15,
+                'alpha': 255,
+                'timer': 0,
+                'target': 'player'
+            })
+
+            # QTE 完成後回復能量
+            if pending_energy_recover > 0:
+                for _ in range(pending_energy_recover):
+                    if player_energy < MAX_ENERGY:
+                        energy_recover_queue.append(player_energy)
+                        player_energy += 1
+                        energy_recover_timer[energy_recover_queue[-1]] = 0
+                pending_energy_recover = 0
 
     # --- 背景 ---
     screen.fill((0, 0, 0))
 
-    # --- 玩家血條 (左上) ---
-    pygame.draw.rect(screen, (255, 0, 0), (10, 10, 100, 10))  # 底色
-    pygame.draw.rect(screen, (0, 255, 0), (10, 10, 100 * (PLAYER_HP / PLAYER_MAX_HP), 10))  # 當前血量
-    hp_text = font.render(f"HP: {PLAYER_HP}/{PLAYER_MAX_HP}", True, (255, 255, 255))
-    screen.blit(hp_text, (10, 22))
+    # --- 玩家血條 ---
+    pygame.draw.rect(screen, (0, 100, 0), (10, 10, 100, 10))
+    pygame.draw.rect(screen, (0, 255, 0), (10, 10, 100 * (PLAYER_HP / PLAYER_MAX_HP), 10))
+    screen.blit(font.render(f"HP: {PLAYER_HP}/{PLAYER_MAX_HP}", True, (255, 255, 255)), (10, 22))
 
-    # --- 敵人血條 (右上) ---
-    pygame.draw.rect(screen, (100, 0, 0), (WIDTH - 110, 10, 100, 10))  # 底色
-    pygame.draw.rect(screen, (255, 0, 0), (WIDTH - 110, 10, 100 * (ENEMY_HP / ENEMY_MAX_HP), 10))  # 當前血量
-    enemy_text = font.render(f"HP: {ENEMY_HP}/{ENEMY_MAX_HP}", True, (255, 255, 255))
-    screen.blit(enemy_text, (WIDTH - 110, 22))
+    # --- 敵人血條 ---
+    pygame.draw.rect(screen, (100, 0, 0), (WIDTH - 110, 10, 100, 10))
+    pygame.draw.rect(screen, (255, 0, 0), (WIDTH - 110, 10, 100 * (ENEMY_HP / ENEMY_MAX_HP), 10))
+    screen.blit(font.render(f"HP: {ENEMY_HP}/{ENEMY_MAX_HP}", True, (255, 255, 255)), (WIDTH - 110, 22))
 
-    # --- 選項顯示 ---
+    # --- 扣血動畫 ---
+    for dmg in damage_texts[:]:
+        dmg['y'] -= 30 * dt
+        dmg['timer'] += dt
+        dmg['alpha'] = max(0, 255 * (1 - dmg['timer'] / 1.0))
+        color = (255, 100, 0) if dmg['target'] == 'player' else (255, 255, 0)
+        text_surf = damage_font.render(f"-{dmg['damage']}", True, color)
+        text_surf.set_alpha(int(dmg['alpha']))
+        screen.blit(text_surf, (dmg['x'] - text_surf.get_width() // 2,
+                                dmg['y'] - text_surf.get_height() // 2))
+        if dmg['timer'] >= 1.0:
+            damage_texts.remove(dmg)
+
+    # --- 能量回復動畫（逐格亮起） ---
+    for i in range(MAX_ENERGY):
+        if energy_recover_timer[i] > 0:
+            energy_recover_timer[i] -= dt
+            if energy_recover_timer[i] < 0:
+                energy_recover_timer[i] = 0
+
+    if energy_recover_queue:
+        recover_timer += dt
+        if recover_timer >= ENERGY_DELAY:
+            idx = energy_recover_queue.pop(0)
+            energy_recover_timer[idx] = 1.0
+            recover_timer = 0
+
+    # --- 選項 & 能量條 ---
     start_x = 50
     start_y = HEIGHT // 2
     spacing = 25
     for i, option in enumerate(options):
-        option_text = option_font.render(f"{i+1}. {option}", True, (255, 255, 255))
-        screen.blit(option_text, (start_x, start_y + i * spacing))
-        # 框住選中的
-        if selected_option == i:
-            pygame.draw.rect(screen, (255, 255, 0),
-                             (start_x - 5, start_y + i * spacing - 2,
-                              option_text.get_width() + 10, option_text.get_height() + 4), 1)
+        color = (255, 255, 255)
+        if selected_option == i and pending_action and player_energy < energy_cost[i]:
+            color = (255, 80, 80)
+        text = option_font.render(f"{i+1}. {option}", True, color)
+        screen.blit(text, (start_x, start_y + i * spacing))
 
-    # --- 能量條 (下方菱形，直的，每個從左到右排列) ---
+        # 選項框
+        if selected_option == i:
+            if not pending_action or player_energy >= energy_cost[i]:
+                pygame.draw.rect(screen, (255, 255, 0),
+                                 (start_x - 5, start_y + i * spacing - 2,
+                                  text.get_width() + 10, text.get_height() + 4), 1)
+
+        # 三角形盾牌
+        if i == 2 and shield_turns > 0:
+            h = text.get_height()
+            offset = 5
+            shield_points = [
+                (start_x + text.get_width() + 5 + offset, start_y + i*spacing),
+                (start_x + text.get_width() + 12 + offset, start_y + i*spacing + h),
+                (start_x + text.get_width() - 2 + offset, start_y + i*spacing + h)
+            ]
+            pygame.draw.polygon(screen, (0, 200, 255), shield_points)
+            screen.blit(font.render(str(shield_turns), True, (255, 255, 255)),
+                        (start_x + text.get_width() + 14 + offset, start_y + i*spacing))
+
+    # --- 能量條 ---
     energy_start_x = 50
     energy_start_y = HEIGHT - 50
     energy_spacing = 20
     for i in range(MAX_ENERGY):
-        # 判斷是否要填充
-        if i < temp_energy:
-            color = (0, 255, 255)  # 實心
-            fill = True
-        else:
-            color = (0, 255, 255)  # 邊框顏色
-            fill = False
-
-        # 直的菱形，每個菱形中心在水平上排列
         points = [
-            (energy_start_x + i * energy_spacing, energy_start_y),           # 左
-            (energy_start_x + i * energy_spacing + 5, energy_start_y - 10),  # 上
-            (energy_start_x + i * energy_spacing + 10, energy_start_y),      # 右
-            (energy_start_x + i * energy_spacing + 5, energy_start_y + 10)   # 下
+            (energy_start_x + i * energy_spacing, energy_start_y),
+            (energy_start_x + i * energy_spacing + 5, energy_start_y - 10),
+            (energy_start_x + i * energy_spacing + 10, energy_start_y),
+            (energy_start_x + i * energy_spacing + 5, energy_start_y + 10)
         ]
-        if fill:
-            pygame.draw.polygon(screen, color, points)
+
+        if energy_recover_timer[i] > 0:
+            alpha = int(255 * energy_recover_timer[i])
+            s = pygame.Surface((10, 10), pygame.SRCALPHA)
+            pygame.draw.polygon(s, (0, 255, 255, alpha), [(0,5),(5,0),(10,5),(5,10)])
+            screen.blit(s, (energy_start_x + i*energy_spacing, energy_start_y-5))
+
+        elif pending_action and selected_option is not None:
+            cost = energy_cost[selected_option]
+            # 填滿能量
+            if i < player_energy - cost:
+                pygame.draw.polygon(screen, (0, 255, 255), points)
+            # 空心表示扣掉的能量
+            elif i >= player_energy - cost and i < player_energy:
+                pygame.draw.polygon(screen, (0, 255, 255), points, 1)
         else:
-            pygame.draw.polygon(screen, color, points, 1)  # 空心
+            # 正常填滿
+            if i < player_energy:
+                pygame.draw.polygon(screen, (0, 255, 255), points)
 
     pygame.display.flip()
-    clock.tick(60)
 
 pygame.quit()
