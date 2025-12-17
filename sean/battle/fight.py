@@ -1,7 +1,9 @@
 import pygame
 import random
-from QTE_DBDmode import play_qte_dbd
-from QTE_MLBmode import play_qte
+import math
+import time
+from QTE_MLBmode import play_qte  # MLB QTE 保留
+from QTE_DBDmode import DBDQTE     # 新增 Defend QTE 類別
 
 pygame.init()
 
@@ -40,9 +42,6 @@ energy_recover_timer = [0] * MAX_ENERGY
 
 # --- Defend ---
 shield_turns = 0
-qte_queue = 0
-qte_perfect_count = 0
-qte_enemy_damage = 0
 pending_energy_recover = 0  # 延後回復能量格數
 
 # --- 能量格動畫 ---
@@ -125,12 +124,25 @@ while running:
                         enemy_damage = int(20 * enemy_multiplier)
 
                         if shield_turns > 0:
-                            # 設置 Defend QTE
-                            qte_queue = 4
-                            qte_perfect_count = 0
-                            qte_enemy_damage = enemy_damage
+                            # ★ 執行新版 Defend QTE
+                            dbd_qte = DBDQTE(screen, WIDTH, HEIGHT)
+                            results = dbd_qte.run_four_steps()
+                            perfect_count = results.count("PERFECT")
+                            final_damage = int(enemy_damage * (1 - 0.2 * perfect_count))
+                            PLAYER_HP -= final_damage
+                            damage_texts.append({
+                                'damage': final_damage,
+                                'x': 10 + 50,
+                                'y': 10 + 15,
+                                'alpha': 255,
+                                'timer': 0,
+                                'target': 'player'
+                            })
+
+                            # QTE 完成後回復能量
+                            pending_energy_recover = 4
                             shield_turns -= 1
-                            pending_energy_recover = 4  # 延後回復能量格數
+
                         else:
                             # 普通扣血
                             PLAYER_HP -= enemy_damage
@@ -153,35 +165,6 @@ while running:
                 selected_option = None
                 pending_action = False
                 temp_energy = player_energy
-
-    # --- Defend QTE 處理 ---
-    if qte_queue > 0:
-        result = play_qte_dbd()
-        if result == "PERFECT":
-            qte_perfect_count += 1
-        qte_queue -= 1
-
-        # 四次完成後計算傷害
-        if qte_queue == 0:
-            final_damage = int(qte_enemy_damage * (1 - 0.2 * qte_perfect_count))
-            PLAYER_HP -= final_damage
-            damage_texts.append({
-                'damage': final_damage,
-                'x': 10 + 50,
-                'y': 10 + 15,
-                'alpha': 255,
-                'timer': 0,
-                'target': 'player'
-            })
-
-            # QTE 完成後回復能量
-            if pending_energy_recover > 0:
-                for _ in range(pending_energy_recover):
-                    if player_energy < MAX_ENERGY:
-                        energy_recover_queue.append(player_energy)
-                        player_energy += 1
-                        energy_recover_timer[energy_recover_queue[-1]] = 0
-                pending_energy_recover = 0
 
     # --- 背景 ---
     screen.fill((0, 0, 0))
@@ -215,6 +198,16 @@ while running:
             energy_recover_timer[i] -= dt
             if energy_recover_timer[i] < 0:
                 energy_recover_timer[i] = 0
+
+    if pending_energy_recover > 0:
+        recover_timer += dt
+        if recover_timer >= ENERGY_DELAY:
+            idx = MAX_ENERGY - pending_energy_recover
+            energy_recover_queue.append(idx)
+            player_energy += 1
+            energy_recover_timer[idx] = 1.0
+            pending_energy_recover -= 1
+            recover_timer = 0
 
     if energy_recover_queue:
         recover_timer += dt
