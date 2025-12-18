@@ -30,6 +30,11 @@ pg.display.set_caption("Bob")
 
 clock = pg.time.Clock()
 
+# --- 雷射發射器圖片 ---
+laser_emitter1_img = pg.image.load(os.path.join('picture', 'lab_laser_top.png')).convert_alpha()
+laser_emitter1_img = pg.transform.scale(laser_emitter1_img,(int(GRID_SIZE * 1.5), int(GRID_SIZE * 1.5)))
+laser_emitter_img = pg.transform.rotate(laser_emitter1_img, -18) 
+
 # --- 玩家手持鏡子圖片 ---
 mirror_hold_image = pg.image.load(os.path.join('picture', 'lab_mirror_whole.png')).convert_alpha()
 mirror_hold_image = pg.transform.scale(mirror_hold_image,(int(GRID_SIZE * 0.6), int(GRID_SIZE * 0.6)))
@@ -57,6 +62,7 @@ mirror_images = {
     45: img_45,
     135: img_135
 }
+
 # ----------------- 資料結構 -----------------
 class Tile:
     def __init__(self, col, row, can_place=True):
@@ -95,7 +101,6 @@ class Mirror:
         dy = math.sin(a) * half
         return ((cx - dx, cy - dy), (cx + dx, cy + dy))
 
-
 class Player:
     def __init__(self, col=1, row=1):
         self.x = col * GRID_SIZE + GRID_SIZE//2
@@ -130,6 +135,12 @@ laser_direction = (1.0, 0.3)
 goal_tile = grid[COLS-2][ROWS-2]
 
 # ----------------- 助手函式 -----------------
+def draw_laser_emitter():
+    lx, ly = laser_source
+    w = laser_emitter_img.get_width()
+    h = laser_emitter_img.get_height()
+    screen.blit(laser_emitter_img, (lx - w // 2, ly - h // 2))
+
 def draw_grid():
     for c in range(COLS):
         for r in range(ROWS):
@@ -183,7 +194,6 @@ def draw_tiles_contents():
                     screen.blit(base_img, t.rect.topleft)
                 
                 # 然後繪製鏡子本身
-                
                 img = t.mirror.get_image()
                 if img :
                     screen.blit(img, t.rect.topleft)
@@ -212,7 +222,6 @@ def draw_player():
         draw_y = y - holding_img.get_height() - radius + 20
 
         screen.blit(holding_img, (draw_x, draw_y))
-
 
 def point_near_line(point, p1, p2, threshold):
     px, py = point
@@ -305,7 +314,7 @@ def draw_laser_path(path):
     if len(path) < 2:
         return
     pg.draw.lines(screen, RED, False, path, 5)
-    pg.draw.circle(screen, RED, laser_source, 6)
+    draw_laser_emitter()
 
 def tile_at(c, r):
     if 0 <= c < COLS and 0 <= r < ROWS:
@@ -386,9 +395,7 @@ while running:
                     player.holding.angle = 135 if player.holding.angle == 45 else 45
                     laser_path_cache = []
 
-    # ----------------------------------------------------
     #     平滑移動：方向鍵持續推動 (dt 做時間修正)
-    # ----------------------------------------------------
     if not player.adjust_mode:
         keys = pg.key.get_pressed()
         dx = dy = 0
@@ -467,7 +474,7 @@ while running:
             end_pos = (lx + nx*tip_len, ly + ny*tip_len)
             pg.draw.line(screen, (180,60,60), laser_source, end_pos, 4)
 
-        pg.draw.circle(screen, RED, laser_source, 5)
+        draw_laser_emitter()
         screen.blit(font.render("按F發射雷射光", True, BLACK),
                     (WIDTH - 220, 10))
 
