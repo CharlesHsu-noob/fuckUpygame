@@ -1,239 +1,187 @@
 import pygame as pg
-import math
-import os, sys
+import sys
+import os
 
-# --- 路徑設定 ---
-script_dir = os.path.dirname(os.path.abspath(__file__))
-base_dir = os.path.dirname(script_dir)
-sys.path.insert(0, base_dir)
-
+# --- 初始化 ---
 pg.init()
-
-# --- 視窗設定 ---
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 1920, 1080
 screen = pg.display.set_mode((WIDTH, HEIGHT))
-pg.display.set_caption("雷射反射遊戲")
-
-# --- 顏色定義 ---
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-RED   = (255, 0, 0)
-GREEN = (0, 255, 0)
-GRAY  = (150, 150, 150)
-
-# --- 插入 flashlight 圖 ---
-flashlight_path = os.path.join(base_dir, "picture", "flashlight.png")
-flashlight_img = pg.image.load(flashlight_path).convert_alpha()
-flashlight_img = pg.transform.scale(flashlight_img, (60, 60))
-
-# --- 遊戲區塊 ---
-exit_rect = pg.Rect(WIDTH-90, 300, 60, 60)          # 出口
-
-# --- 鏡子設定 ---
-mirror_length = 120
-mirror_thickness = 6
-mirror1 = {"x": 280, "y": HEIGHT//2, "angle": 0}
-mirror2 = {"x": WIDTH//2, "y": 100, "angle": 0}
-
-# --- 狀態變數 ---
-started = False
-won = False
-failed = False
-laser_path = []
-show_instructions = True
-selected_mirror = 1  # 1 代表鏡子1，2 代表鏡子2
-
-# --- 雷射光發射座標 ---
-laser_x, laser_y = 80, 50
-
-# --- 字型 ---
-font = pg.font.SysFont("Microsoft JhengHei", 36)
-small_font = pg.font.SysFont("Microsoft JhengHei", 24)
-
-# --- 按鈕 ---
-start_button = pg.Rect(50, HEIGHT-80, 120, 50)
-restart_button = pg.Rect(200, HEIGHT-80, 175, 50)
-play_button = pg.Rect(WIDTH//2 - 100, HEIGHT - 120, 165, 60)
-
-# --- 畫鏡子 ---
-def draw_mirror(mirror):
-    angle_rad = math.radians(mirror["angle"])
-    dx = math.cos(angle_rad) * mirror_length / 2
-    dy = math.sin(angle_rad) * mirror_length / 2
-    p1 = (mirror["x"] - dx, mirror["y"] - dy)
-    p2 = (mirror["x"] + dx, mirror["y"] + dy)
-    pg.draw.line(screen, BLACK, p1, p2, mirror_thickness)
-    return p1, p2
-
-# --- 反射公式 ---
-def reflect_vector(vx, vy, x1, y1, x2, y2):
-    dx, dy = x2 - x1, y2 - y1
-    nx, ny = -dy, dx
-    length = math.hypot(nx, ny)
-    if length == 0:
-        return vx, vy
-    nx, ny = nx / length, ny / length
-    dot = vx * nx + vy * ny
-    rx = vx - 2 * dot * nx
-    ry = vy - 2 * dot * ny
-    return rx, ry
-
-# --- 幫助函式 ---
-def get_mirror_points(mirror):
-    angle_rad = math.radians(mirror["angle"])
-    dx = math.cos(angle_rad) * mirror_length / 2
-    dy = math.sin(angle_rad) * mirror_length / 2
-    return (mirror["x"] - dx, mirror["y"] - dy), (mirror["x"] + dx, mirror["y"] + dy)
-
-def point_near_line(point, p1, p2, threshold):
-    px, py = point
-    x1, y1 = p1
-    x2, y2 = p2
-    dx, dy = x2 - x1, y2 - y1
-    if dx == dy == 0:
-        return False
-    t = ((px - x1) * dx + (py - y1) * dy) / (dx*dx + dy*dy)
-    t = max(0, min(1, t))
-    nearest_x = x1 + t*dx
-    nearest_y = y1 + t*dy
-    dist = math.hypot(px - nearest_x, py - nearest_y)
-    return dist < threshold
-
-# --- 雷射反射 ---
-def draw_laser():
-    global won, failed
-    if not started:
-        return
-    laser_path.clear()
-    x, y = laser_x, laser_y
-    dx, dy = 5, 5
-    won = False
-    failed = False
-    for _ in range(2000):
-        x += dx
-        y += dy
-        laser_path.append((x, y))
-
-        if exit_rect.collidepoint(x, y):
-            won = True
-            return
-
-        for m in [mirror1, mirror2]:
-            p1, p2 = get_mirror_points(m)
-            if point_near_line((x, y), p1, p2, 5):
-                dx, dy = reflect_vector(dx, dy, *p1, *p2)
-
-        if x < 0 or x > WIDTH or y < 0 or y > HEIGHT:
-            failed = True
-            return
-
-# --- 說明畫面 ---
-def draw_instructions():
-    screen.fill(WHITE)
-    title = font.render("遊戲規則", True, BLACK)
-    screen.blit(title, (WIDTH//2 - title.get_width()//2, 80))
-
-    rules = [
-        "光線會由手電筒發出，",
-        "目標是要碰到右下角綠色正方形，",
-        "← →：選擇鏡子",
-        "A / D：左右移動鏡子",
-        "調整好位置後，按下 start 開始發射雷射"
-    ]
-    for i, text in enumerate(rules):
-        line = small_font.render(text, True, BLACK)
-        screen.blit(line, (80, 160 + i * 40))
-
-    pg.draw.rect(screen, (180, 180, 180), play_button)
-    play_text = font.render("開始遊戲", True, BLACK)
-    screen.blit(play_text, (play_button.x + 10, play_button.y +7))
-
-    pg.display.flip()
-
-# --- 主迴圈 ---
 clock = pg.time.Clock()
+FPS = 60
+
+# --- 顏色 ---
+BLACK = (0, 0, 0)
+GREEN = (34, 139, 34)
+BLUE = (0, 100, 255)
+
+# --- 玩家圖片 ---
+player_img = pg.image.load(os.path.join("picture", "stand.png")).convert_alpha()
+SCALE_FACTOR = 4.8  # 從 400x600 -> 1920x1080 的比例
+
+PLAYER_WIDTH = int(48 * SCALE_FACTOR)
+PLAYER_HEIGHT = int(64 * SCALE_FACTOR)
+player_img = pg.transform.scale(player_img, (PLAYER_WIDTH, PLAYER_HEIGHT))
+
+# --- 玩家設定 ---
+player_x = WIDTH // 2
+player_y = HEIGHT - int(150 * SCALE_FACTOR)
+player_vx = 0
+player_vy = 0
+MOVE_SPEED = 2 * SCALE_FACTOR
+JUMP_SPEED = -11 * SCALE_FACTOR
+GRAVITY = 0.6 * SCALE_FACTOR
+
+# 跳躍控制
+jump_pressed = False
+COYOTE_TIME = 0.12  # 土狼時間，0.12秒
+time_since_ground = 0  # 離開平台時間
+
+# --- 平台設定 ---
+PLATFORM_WIDTH = int(80 * SCALE_FACTOR)
+PLATFORM_HEIGHT = int(15 * SCALE_FACTOR)
+
+platform_positions = [
+    (0, 580*SCALE_FACTOR),(80*SCALE_FACTOR, 580*SCALE_FACTOR),(160*SCALE_FACTOR, 580*SCALE_FACTOR),
+    (240*SCALE_FACTOR, 580*SCALE_FACTOR),(320*SCALE_FACTOR, 580*SCALE_FACTOR),(400*SCALE_FACTOR, 580*SCALE_FACTOR),  # 地面
+    (50*SCALE_FACTOR, 490*SCALE_FACTOR),
+    (350*SCALE_FACTOR, 490*SCALE_FACTOR),
+    (200*SCALE_FACTOR, 420*SCALE_FACTOR),
+    (120*SCALE_FACTOR, 360*SCALE_FACTOR),
+    (20*SCALE_FACTOR, 270*SCALE_FACTOR),
+    (150*SCALE_FACTOR, 180*SCALE_FACTOR),
+    (300*SCALE_FACTOR, 180*SCALE_FACTOR),
+    (200*SCALE_FACTOR, 90*SCALE_FACTOR),
+    (150*SCALE_FACTOR, 0),
+    (50*SCALE_FACTOR, -80*SCALE_FACTOR),
+    (120*SCALE_FACTOR, -160*SCALE_FACTOR),
+    (260*SCALE_FACTOR, -230*SCALE_FACTOR),
+    (300*SCALE_FACTOR, -300*SCALE_FACTOR),
+]
+
+platforms = [pg.Rect(x, y, PLATFORM_WIDTH, PLATFORM_HEIGHT) for x, y in platform_positions]
+ground = platforms[:6]  # 前 6 個是地面
+
+# --- 載入圖片 ---
+rock_img = pg.image.load(os.path.join("picture", "forest_rock.png")).convert_alpha()
+rock_img = pg.transform.scale(rock_img, (PLATFORM_WIDTH, PLATFORM_HEIGHT))
+
+# --- 判斷角色是否站在平台上 ---
+def is_on_platform(px, py):
+    feet_y = py 
+    for plat in platforms:
+        if plat.collidepoint(px, feet_y):
+            return True
+    return False
+
+# --- 捲動設定 ---
+SCROLL_UP_TRIGGER_Y = HEIGHT * 0.35
+SCROLL_DOWN_TRIGGER_Y = HEIGHT * 0.60
+scroll_offset = 0
+
+# --- 遊戲主循環 ---
 running = True
 while running:
+    dt = clock.tick(FPS) / 1000  # delta time，秒
     for event in pg.event.get():
         if event.type == pg.QUIT:
             running = False
+        if event.type == pg.KEYUP and event.key == pg.K_SPACE:
+            jump_pressed = False
 
-        if show_instructions:
-            if event.type == pg.MOUSEBUTTONDOWN and play_button.collidepoint(event.pos):
-                show_instructions = False
-            continue
-
-        if event.type == pg.MOUSEBUTTONDOWN:
-            if start_button.collidepoint(event.pos):
-                if not started:
-                    started = True
-                    won = False
-                    failed = False
-                    draw_laser()
-            if restart_button.collidepoint(event.pos):
-                started = False
-                won = False
-                failed = False
-                laser_path.clear()
-
-    if show_instructions:
-        draw_instructions()
-        clock.tick(60)
-        continue
-
+    # --- 控制 ---
     keys = pg.key.get_pressed()
-    if not started:
-        # 鏡子選擇（左右鍵）
-        if keys[pg.K_LEFT]:
-            selected_mirror = 1
-        elif keys[pg.K_RIGHT]:
-            selected_mirror = 2
+    player_vx = 0
+    if keys[pg.K_LEFT]:
+        player_vx = -MOVE_SPEED
+    if keys[pg.K_RIGHT]:
+        player_vx = MOVE_SPEED
 
-        # 取得目前控制的鏡子
-        current = mirror1 if selected_mirror == 1 else mirror2
+    # --- 土狼時間判定 ---
+    if is_on_platform(player_x, player_y):
+        time_since_ground = 0
+    else:
+        time_since_ground += dt
 
-        # A/D 控制左右移動
-        if keys[pg.K_a]:
-            current["x"] -= 3
-        if keys[pg.K_d]:
-            current["x"] += 3
+    # --- 跳躍 ---
+    if keys[pg.K_SPACE] and not jump_pressed and time_since_ground <= COYOTE_TIME:
+        player_vy = JUMP_SPEED
+        jump_pressed = True
 
-        # 限制邊界
-        current["x"] = max(60, min(WIDTH - 60, current["x"]))
-        current["y"] = max(60, min(HEIGHT - 60, current["y"]))
+    # --- 水平移動 ---
+    player_x += player_vx
 
-    # --- 畫面更新 ---
-    screen.fill(WHITE)
-    flashlight_rect = flashlight_img.get_rect(center=(laser_x, laser_y))
-    screen.blit(flashlight_img, flashlight_rect)
-    pg.draw.rect(screen, GREEN, exit_rect)
+    player_rect = pg.Rect(
+        player_x - PLAYER_WIDTH // 2,
+        player_y - PLAYER_HEIGHT,
+        PLAYER_WIDTH,
+        PLAYER_HEIGHT
+    )
 
-    # --- 畫鏡子 ---
-    p1, p2 = draw_mirror(mirror1)
-    p3, p4 = draw_mirror(mirror2)
+    for plat in platforms:
+        if player_rect.colliderect(plat):
+            if player_vx > 0:
+                player_x = plat.left - PLAYER_WIDTH // 2
+            elif player_vx < 0:
+                player_x = plat.right + PLAYER_WIDTH // 2
 
-    # 畫選取提示
-    selected = mirror1 if selected_mirror == 1 else mirror2
-    pg.draw.circle(screen, RED, (int(selected["x"]), int(selected["y"])), 10, 2)
+    # --- 垂直移動 ---
+    player_vy += GRAVITY
+    player_y += player_vy
 
-    # --- 畫雷射 ---
-    if started and len(laser_path) > 1:
-        pg.draw.lines(screen, RED, False, laser_path, 2)
+    player_rect = pg.Rect(
+        player_x - PLAYER_WIDTH // 2,
+        player_y - PLAYER_HEIGHT,
+        PLAYER_WIDTH,
+        PLAYER_HEIGHT
+    )
 
-    # --- 按鈕 ---
-    pg.draw.rect(screen, (200,200,200), start_button)
-    pg.draw.rect(screen, (200,200,200), restart_button)
-    screen.blit(font.render("start", True, BLACK), (start_button.x+20, start_button.y))
-    screen.blit(font.render("try again", True, BLACK), (restart_button.x+20, restart_button.y))
+    for plat in platforms:
+        if player_rect.colliderect(plat):
+            if player_vy > 0:  # 往下掉，踩到平台
+                player_y = plat.top
+                player_vy = 0
+                time_since_ground = 0 # 落地後重置土狼時間
+            elif player_vy < 0:
+                player_y = plat.bottom + PLAYER_HEIGHT
+                player_vy = 0
 
-    # --- 結果顯示 ---
-    if won:
-        screen.blit(font.render("success!", True, RED), (WIDTH-200, HEIGHT-100))
-    elif failed:
-        screen.blit(font.render("fail!", True, BLACK), (WIDTH-200, HEIGHT-100))
+    # --- 邊界 ---
+    player_x = max(
+        PLAYER_WIDTH // 2,
+        min(WIDTH - PLAYER_WIDTH // 2, player_x)
+    )
+
+    # --- 捲動（往上） ---
+    if player_y < SCROLL_UP_TRIGGER_Y and player_vy < 0:
+        scroll_amount = SCROLL_UP_TRIGGER_Y - player_y
+        player_y += scroll_amount
+        scroll_offset += scroll_amount
+        for plat in platforms:
+            plat.y += scroll_amount
+
+    # --- 捲動（往下） ---
+    if player_y > SCROLL_DOWN_TRIGGER_Y and player_vy > 0:
+        scroll_amount = player_y - SCROLL_DOWN_TRIGGER_Y
+        lowest_ground_y = 580 * SCALE_FACTOR
+        if platforms[0].y - scroll_amount < lowest_ground_y:
+            scroll_amount = platforms[0].y - lowest_ground_y
+        player_y -= scroll_amount
+        for plat in platforms:
+            plat.y -= scroll_amount
+        scroll_offset -= scroll_amount
+
+    # --- 繪製 ---
+    screen.fill(BLACK)
+    for plat in platforms:
+        if plat in ground:
+            pg.draw.rect(screen, GREEN, plat)
+        else:
+            screen.blit(rock_img, (plat.x, plat.y))
+    screen.blit(
+        player_img,
+        (player_x - PLAYER_WIDTH // 2, player_y - PLAYER_HEIGHT)
+    )
 
     pg.display.flip()
-    clock.tick(60)
 
 pg.quit()
-sys.exit()

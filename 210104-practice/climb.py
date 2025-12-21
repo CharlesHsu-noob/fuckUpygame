@@ -14,15 +14,20 @@ BLACK = (0, 0, 0)
 GREEN = (34, 139, 34)
 BLUE = (0, 100, 255)
 
+# --- 玩家圖片 ---
+player_img = pg.image.load(os.path.join("picture", "stand.png")).convert_alpha()
+PLAYER_WIDTH = 48
+PLAYER_HEIGHT = 64
+player_img = pg.transform.scale(player_img, (PLAYER_WIDTH, PLAYER_HEIGHT))
+
 # --- 玩家設定 ---
-player_radius = 12
-player_x = WIDTH // 2
-player_y = HEIGHT - 150
+player_x = WIDTH 
+player_y = HEIGHT 
 player_vx = 0
 player_vy = 0
-MOVE_SPEED = 3
-JUMP_SPEED = -12
-GRAVITY = 0.5
+MOVE_SPEED = 2
+JUMP_SPEED = -11
+GRAVITY = 0.6
 
 # 跳躍控制
 jump_pressed = False
@@ -35,19 +40,19 @@ PLATFORM_HEIGHT = 15
 
 platform_positions = [
     (0, 580),(80, 580),(160, 580),(240, 580),(320, 580),(400, 580),  # 地面
-    (50, 470),
-    (350, 470),
-    (200, 400),
-    (120, 290),
-    (20, 220),
-    (150, 150),
-    (300, 100),
-    (200, 0),
-    (150, -50),
-    (0, -120),
-    (120, -230),
-    (260, -300),
-    (300, -380),
+    (50, 490),
+    (350, 490),
+    (200, 420),
+    (120, 360),
+    (20, 270),
+    (150, 180),
+    (300, 180),
+    (200, 90),
+    (150, 0),
+    (50, -80),
+    (120, -160),
+    (260, -230),
+    (300, -300),
 ]
 
 platforms = [pg.Rect(x, y, PLATFORM_WIDTH, PLATFORM_HEIGHT) for x, y in platform_positions]
@@ -59,7 +64,7 @@ rock_img = pg.transform.scale(rock_img, (PLATFORM_WIDTH, PLATFORM_HEIGHT))
 
 # --- 判斷角色是否站在平台上 ---
 def is_on_platform(px, py):
-    feet_y = py + player_radius + 3
+    feet_y = py 
     for plat in platforms:
         if plat.collidepoint(px, feet_y):
             return True
@@ -101,37 +106,48 @@ while running:
 
     # --- 水平移動 ---
     player_x += player_vx
-    player_rect = pg.Rect(player_x - player_radius, player_y - player_radius,
-                          player_radius * 2, player_radius * 2)
+
+    player_rect = pg.Rect(
+    player_x - PLAYER_WIDTH // 2,
+    player_y - PLAYER_HEIGHT,
+    PLAYER_WIDTH,
+    PLAYER_HEIGHT)
 
     for plat in platforms:
         if player_rect.colliderect(plat):
             if player_vx > 0:
-                player_x = plat.left - player_radius * 2
+                player_x = plat.left - PLAYER_WIDTH // 2
             elif player_vx < 0:
-                player_x = plat.right
+                player_x = plat.right + PLAYER_WIDTH // 2
+
 
     # --- 垂直移動 ---
     player_vy += GRAVITY
     player_y += player_vy
-    player_rect = pg.Rect(player_x - player_radius, player_y - player_radius,
-                          player_radius*2, player_radius*2)
+
+    player_rect = pg.Rect(
+        player_x - PLAYER_WIDTH // 2,
+        player_y - PLAYER_HEIGHT,
+        PLAYER_WIDTH,
+        PLAYER_HEIGHT
+    )
 
     for plat in platforms:
         if player_rect.colliderect(plat):
-            if player_vy > 0:
-                player_y = plat.top - player_radius
+            if player_vy > 0:  # 往下掉，踩到平台
+                player_y = plat.top
                 player_vy = 0
-                time_since_ground = 0  # 落地後重置土狼時間
+                time_since_ground = 0 # 落地後重置土狼時間
             elif player_vy < 0:
-                player_y = plat.bottom + player_radius
+                player_y = plat.bottom + PLAYER_HEIGHT
                 player_vy = 0
 
     # --- 邊界 ---
-    if player_x - player_radius < 0:
-        player_x = player_radius
-    if player_x + player_radius > WIDTH:
-        player_x = WIDTH - player_radius
+    player_x = max(
+        PLAYER_WIDTH // 2,
+        min(WIDTH - PLAYER_WIDTH // 2, player_x)
+    )
+
 
     # --- 捲動（往上） ---
     if player_y < SCROLL_UP_TRIGGER_Y and player_vy < 0:
@@ -159,7 +175,9 @@ while running:
             pg.draw.rect(screen, GREEN, plat)
         else:
             screen.blit(rock_img, (plat.x, plat.y))
-    pg.draw.circle(screen, BLUE, (int(player_x), int(player_y)), player_radius)
+    screen.blit(
+    player_img,
+    (player_x - PLAYER_WIDTH // 2, player_y - PLAYER_HEIGHT))
 
     pg.display.flip()
 
