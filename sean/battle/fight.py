@@ -3,7 +3,7 @@ import random
 import math
 import time
 from QTE_MLBmode import play_qte  # MLB QTE 保留
-from QTE_DBDmode import DBDQTE     # 新增 Defend QTE 類別
+from QTE_DBDmode import play_dbd_qte     # 修正為函數呼叫
 
 pygame.init()
 
@@ -124,9 +124,8 @@ while running:
                         enemy_damage = int(20 * enemy_multiplier)
 
                         if shield_turns > 0:
-                            # ★ 執行新版 Defend QTE
-                            dbd_qte = DBDQTE(screen, WIDTH, HEIGHT)
-                            results = dbd_qte.run_four_steps()
+                            # ★ 僅此處修正呼叫邏輯：改為與 MLB 模式一致的函數呼叫
+                            results = play_dbd_qte(screen, WIDTH, HEIGHT)
                             perfect_count = results.count("PERFECT")
                             final_damage = int(enemy_damage * (1 - 0.2 * perfect_count))
                             PLAYER_HP -= final_damage
