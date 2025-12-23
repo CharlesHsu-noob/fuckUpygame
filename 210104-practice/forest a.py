@@ -6,7 +6,7 @@ import os
 pg.init()
 
 # --- 世界大小（邏輯用，不變） ---
-WORLD_WIDTH, WORLD_HEIGHT = 400, 600
+WORLD_WIDTH, WORLD_HEIGHT = 500, 600
 
 # --- 實際視窗大小 ---
 WINDOW_WIDTH, WINDOW_HEIGHT = 1920, 1080
@@ -52,8 +52,9 @@ class char(pg.sprite.Sprite):
         super().__init__()
         self.image=image
         self.rect=self.image.get_rect(center=(player_x,player_y))
-player_x = WORLD_WIDTH-100
-player_y = 520
+player_x = 450
+player_y = 300 # 玩家初始位置
+bg_scroll_anchor_y = 300 # 背景捲動基準點 (與初始位置相同，讓一開始背景位置正確)
 player_vx = 0
 player_vy = 0
 char_u=char(player_img,player_x,player_y)
@@ -80,14 +81,14 @@ PLATFORM_WIDTH = 80
 PLATFORM_HEIGHT = 15
 
 platform_positions = [
-    (0, 322),(80, 322),(160, 322),(240, 322),(320, 322),(400, 322),
-    (50, 300),(350, 270),(200, 220),
-    (150, 180),(300, 180),(200, 90),(150, 0),
-    (50, -80),(120, -160),(260, -230),(300, -300),
+    (0, 322),(80, 322),(160, 322),(240, 322),(320, 322),(400, 322),(480, 322),
+    (50, 250),(350, 230),(150, 170),(200, 90),(130, 10),
+    (50, -80),(120, -160),(260, -230),(300, -300),(250, -380),
+    (200, -450),(120, -530),(50, -590),(0, -640),
 ]
 
 platforms = [pg.Rect(x, y, PLATFORM_WIDTH, PLATFORM_HEIGHT) for x, y in platform_positions]
-ground = platforms[:6]
+ground = platforms[:7]
 
 rock_img = pg.image.load(os.path.join("picture", "forest_rock.png")).convert_alpha()
 rock_img = pg.transform.scale(rock_img, (PLATFORM_WIDTH, PLATFORM_HEIGHT))
@@ -107,7 +108,7 @@ def is_on_platform(px, py):
 
 # ================= 捲動設定 =================
 SCROLL_UP_TRIGGER_Y = WORLD_HEIGHT * 0.35
-SCROLL_DOWN_TRIGGER_Y = WORLD_HEIGHT * 0.60
+SCROLL_DOWN_TRIGGER_Y = WORLD_HEIGHT * 0.6
 
 # ================= 遊戲主迴圈 =================
 running = True
@@ -192,30 +193,36 @@ while running:
         min(WORLD_WIDTH - PLAYER_WIDTH // 2, player_x)
     )
 
-    # ---------- 向上捲動 (已停用，保持石頭不動) ----------
-    # if player_y < SCROLL_UP_TRIGGER_Y and player_vy < 0:
-    #    scroll = SCROLL_UP_TRIGGER_Y - player_y
-    #    player_y += scroll
-    #    for plat in platforms:
-    #        plat.y += scroll
+    # ---------- 向上捲動 (鏡頭跟隨) ----------
+    if player_y < SCROLL_UP_TRIGGER_Y:
+        scroll = SCROLL_UP_TRIGGER_Y - player_y
+        player_y += scroll
+        # 修正：所有平台一起移動，石頭位置改變
+        for plat in platforms:
+            plat.y += scroll
+        
+        # 修正：背景捲動基準點也要跟著移動，確保背景與玩家同步
+        bg_scroll_anchor_y += scroll
 
-    # ---------- 向下捲動 (已停用，保持石頭不動) ----------
-    # if player_y > SCROLL_DOWN_TRIGGER_Y and player_vy > 0:
-    #    raw_scroll = player_y - SCROLL_DOWN_TRIGGER_Y
-    #
-    #    # 限制每幀最大捲動量，避免瞬移
-    #    MAX_SCROLL = 8
-    #    scroll = min(raw_scroll, MAX_SCROLL)
-    #
-    #    # 避免把地面拉過頭
-    #    lowest_ground_y = 485
-    #    if platforms[0].y - scroll < lowest_ground_y:
-    #        scroll = platforms[0].y - lowest_ground_y
-    #
-    #    if scroll > 0:
-    #        player_y -= scroll
-    #        for plat in platforms:
-    #            plat.y -= scroll
+    # ---------- 向下捲動 (鏡頭跟隨) ----------
+    if player_y > SCROLL_DOWN_TRIGGER_Y:
+        raw_scroll = player_y - SCROLL_DOWN_TRIGGER_Y
+        MAX_SCROLL = 15  # 放寬限速，讓鏡頭跟得緊一點
+        scroll = min(raw_scroll, MAX_SCROLL)
+        
+        # 限制：不要捲動超過初始地面位置 (防止看到地下)
+        # 假設 platforms[0] 是地面參考點，初始 y 為 322
+        # 如果 platforms[0].y - scroll < 322，則修正 scroll
+        INITIAL_GROUND_Y = 322
+        if platforms[0].y - scroll < INITIAL_GROUND_Y:
+            scroll = platforms[0].y - INITIAL_GROUND_Y
+
+        # 修正：執行捲動
+        if scroll > 0:
+            player_y -= scroll
+            for plat in platforms:
+                plat.y -= scroll
+            bg_scroll_anchor_y -= scroll
 
     # ================= 繪製（畫在 world_surface） =================
     world_surface.fill((0, 0, 0, 0))
@@ -241,14 +248,14 @@ while running:
     screen.fill(BLACK)
 
     # 計算背景位置
-    # 當 player_y = 600 (地面) 時，顯示背景底部
+    # 當 player_y = bg_scroll_anchor_y 時，顯示背景底部 (bg_start_y)
     # 背景高度 3500, 螢幕高度 1080 -> y = 1080 - 3500 = -2420
     # 玩家往上跳 (player_y 變小)，背景向下捲 (bg_y 變大)
     bg_scroll_speed = 2.0
     bg_start_y = 1080 - 3500
-    bg_y = bg_start_y + (600 - player_y) * bg_scroll_speed
+    bg_y = bg_start_y + (bg_scroll_anchor_y - player_y) * bg_scroll_speed
     
-    # 限制背景不要跑出範圍 (可選)
+    # 限制背景不要跑出範圍 (上方不能露出黑邊，下方不能露出黑邊)
     if bg_y > 0: bg_y = 0
     if bg_y < 1080 - 3500: bg_y = 1080 - 3500
 
