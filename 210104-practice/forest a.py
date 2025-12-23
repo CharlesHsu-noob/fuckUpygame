@@ -18,10 +18,6 @@ FPS = 60
 
 # --- 虛擬畫面（所有遊戲內容畫在這） ---
 world_surface = pg.Surface((WORLD_WIDTH, WORLD_HEIGHT))
-bg_img = pg.image.load(os.path.join("picture", "forest_e.png")).convert()
-bg_scaled = pg.transform.smoothscale(bg_img, (WORLD_WIDTH, WORLD_HEIGHT))
-bg_offset_y = 0.0
-BG_PARALLAX = 0.3
 
 # --- 等比例縮放計算 ---
 scale_x = WINDOW_WIDTH / WORLD_WIDTH
@@ -38,6 +34,9 @@ offset_y = (WINDOW_HEIGHT - scaled_height) // 2
 BLACK = (0, 0, 0)
 GREEN = (34, 139, 34)
 BLUE = (0, 100, 255)
+
+bg_img_raw = pg.image.load(os.path.join("picture", "forest_e.png")).convert()
+bg_img_full = pg.transform.scale(bg_img_raw, (2000, 3500))
 
 # ================= 玩家圖片 =================
 player_img = pg.image.load(os.path.join("picture", "stand.png")).convert_alpha()
@@ -170,11 +169,6 @@ while running:
     player_vy += GRAVITY
     player_y += player_vy
 
-    if not is_on_platform(player_x, player_y):
-        bg_offset_y += player_vy * BG_PARALLAX
-        if bg_scaled.get_height() > 0:
-            bg_offset_y %= bg_scaled.get_height()
-
     player_rect = pg.Rect(
         player_x - PLAYER_WIDTH // 2,
         player_y - PLAYER_HEIGHT,
@@ -198,10 +192,33 @@ while running:
         min(WORLD_WIDTH - PLAYER_WIDTH // 2, player_x)
     )
 
+    # ---------- 向上捲動 ----------
+    if player_y < SCROLL_UP_TRIGGER_Y and player_vy < 0:
+        scroll = SCROLL_UP_TRIGGER_Y - player_y
+        player_y += scroll
+        for plat in platforms:
+            plat.y += scroll
+
+    # ---------- 向下捲動（有限速版） ----------
+    if player_y > SCROLL_DOWN_TRIGGER_Y and player_vy > 0:
+        raw_scroll = player_y - SCROLL_DOWN_TRIGGER_Y
+
+        # 限制每幀最大捲動量，避免瞬移
+        MAX_SCROLL = 8
+        scroll = min(raw_scroll, MAX_SCROLL)
+
+        # 避免把地面拉過頭
+        lowest_ground_y = 485
+        if platforms[0].y - scroll < lowest_ground_y:
+            scroll = platforms[0].y - lowest_ground_y
+
+        if scroll > 0:
+            player_y -= scroll
+            for plat in platforms:
+                plat.y -= scroll
+
     # ================= 繪製（畫在 world_surface） =================
-    oy = int(bg_offset_y) % bg_scaled.get_height()
-    world_surface.blit(bg_scaled, (0, oy - bg_scaled.get_height()))
-    world_surface.blit(bg_scaled, (0, oy))
+    world_surface.fill(BLACK)
 
     for plat in platforms:
         if plat in ground:
