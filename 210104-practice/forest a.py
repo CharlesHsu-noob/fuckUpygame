@@ -17,7 +17,7 @@ clock = pg.time.Clock()
 FPS = 60
 
 # --- 虛擬畫面（所有遊戲內容畫在這） ---
-world_surface = pg.Surface((WORLD_WIDTH, WORLD_HEIGHT))
+world_surface = pg.Surface((WORLD_WIDTH, WORLD_HEIGHT), pg.SRCALPHA)
 
 # --- 等比例縮放計算 ---
 scale_x = WINDOW_WIDTH / WORLD_WIDTH
@@ -53,7 +53,7 @@ class char(pg.sprite.Sprite):
         self.image=image
         self.rect=self.image.get_rect(center=(player_x,player_y))
 player_x = WORLD_WIDTH-100
-player_y = WORLD_HEIGHT
+player_y = 520
 player_vx = 0
 player_vy = 0
 char_u=char(player_img,player_x,player_y)
@@ -80,8 +80,8 @@ PLATFORM_WIDTH = 80
 PLATFORM_HEIGHT = 15
 
 platform_positions = [
-    (0, 580),(80, 580),(160, 580),(240, 580),(320, 580),(400, 580),
-    (50, 490),(350, 490),(200, 420),(120, 360),(20, 270),
+    (0, 322),(80, 322),(160, 322),(240, 322),(320, 322),(400, 322),
+    (50, 300),(350, 270),(200, 220),
     (150, 180),(300, 180),(200, 90),(150, 0),
     (50, -80),(120, -160),(260, -230),(300, -300),
 ]
@@ -192,33 +192,33 @@ while running:
         min(WORLD_WIDTH - PLAYER_WIDTH // 2, player_x)
     )
 
-    # ---------- 向上捲動 ----------
-    if player_y < SCROLL_UP_TRIGGER_Y and player_vy < 0:
-        scroll = SCROLL_UP_TRIGGER_Y - player_y
-        player_y += scroll
-        for plat in platforms:
-            plat.y += scroll
+    # ---------- 向上捲動 (已停用，保持石頭不動) ----------
+    # if player_y < SCROLL_UP_TRIGGER_Y and player_vy < 0:
+    #    scroll = SCROLL_UP_TRIGGER_Y - player_y
+    #    player_y += scroll
+    #    for plat in platforms:
+    #        plat.y += scroll
 
-    # ---------- 向下捲動（有限速版） ----------
-    if player_y > SCROLL_DOWN_TRIGGER_Y and player_vy > 0:
-        raw_scroll = player_y - SCROLL_DOWN_TRIGGER_Y
-
-        # 限制每幀最大捲動量，避免瞬移
-        MAX_SCROLL = 8
-        scroll = min(raw_scroll, MAX_SCROLL)
-
-        # 避免把地面拉過頭
-        lowest_ground_y = 485
-        if platforms[0].y - scroll < lowest_ground_y:
-            scroll = platforms[0].y - lowest_ground_y
-
-        if scroll > 0:
-            player_y -= scroll
-            for plat in platforms:
-                plat.y -= scroll
+    # ---------- 向下捲動 (已停用，保持石頭不動) ----------
+    # if player_y > SCROLL_DOWN_TRIGGER_Y and player_vy > 0:
+    #    raw_scroll = player_y - SCROLL_DOWN_TRIGGER_Y
+    #
+    #    # 限制每幀最大捲動量，避免瞬移
+    #    MAX_SCROLL = 8
+    #    scroll = min(raw_scroll, MAX_SCROLL)
+    #
+    #    # 避免把地面拉過頭
+    #    lowest_ground_y = 485
+    #    if platforms[0].y - scroll < lowest_ground_y:
+    #        scroll = platforms[0].y - lowest_ground_y
+    #
+    #    if scroll > 0:
+    #        player_y -= scroll
+    #        for plat in platforms:
+    #            plat.y -= scroll
 
     # ================= 繪製（畫在 world_surface） =================
-    world_surface.fill(BLACK)
+    world_surface.fill((0, 0, 0, 0))
 
     for plat in platforms:
         if plat in ground:
@@ -239,6 +239,23 @@ while running:
     )
 
     screen.fill(BLACK)
+
+    # 計算背景位置
+    # 當 player_y = 600 (地面) 時，顯示背景底部
+    # 背景高度 3500, 螢幕高度 1080 -> y = 1080 - 3500 = -2420
+    # 玩家往上跳 (player_y 變小)，背景向下捲 (bg_y 變大)
+    bg_scroll_speed = 2.0
+    bg_start_y = 1080 - 3500
+    bg_y = bg_start_y + (600 - player_y) * bg_scroll_speed
+    
+    # 限制背景不要跑出範圍 (可選)
+    if bg_y > 0: bg_y = 0
+    if bg_y < 1080 - 3500: bg_y = 1080 - 3500
+
+    # 置中繪製
+    bg_x = (WINDOW_WIDTH - 2000) // 2
+    screen.blit(bg_img_full, (bg_x, bg_y))
+
     screen.blit(scaled_surface, (offset_x, offset_y))
     pg.display.flip()
     #update class 
