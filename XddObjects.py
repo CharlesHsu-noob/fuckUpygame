@@ -17,6 +17,59 @@ import XddObjects as xo
 #w,h=screeninfo.current_w,screeninfo.current_h-80
 #screen = pg.display.set_mode((w,h))
 
+class Slider:
+    def __init__(self, x, y, w, h, init_val=0.5, bg_color=(200, 200, 200), fill_color=(150, 150, 150), handle_color=(100, 100, 100)):
+        self.rect = pg.Rect(x, y, w, h)
+        self.val = max(0.0, min(1.0, init_val))  # 確保初始值在 0~1 之間
+        
+        # 顏色設定
+        self.bg_color = bg_color
+        self.fill_color = fill_color
+        self.handle_color = handle_color
+        
+        # 拖曳狀態 (如果你還想保留滑鼠拖曳功能)
+        self.dragging = False
+
+    def change_value(self, amount):
+        """ 專門給鍵盤用的：傳入變化量 (例如 +0.05 或 -0.05) """
+        self.val += amount
+        self.val = max(0.0, min(1.0, self.val)) # 限制在 0.0 ~ 1.0 之間
+
+    def set_value(self, new_val):
+        """ 直接設定數值 (例如讀檔時用) """
+        self.val = max(0.0, min(1.0, new_val))
+
+    def get_value(self):
+        return self.val
+
+    def handle_mouse(self, event):
+        """ (選用) 處理滑鼠拖曳 """
+        if event.type == pg.MOUSEBUTTONDOWN:
+            if self.rect.collidepoint(event.pos):
+                self.dragging = True
+        elif event.type == pg.MOUSEBUTTONUP:
+            self.dragging = False
+        
+        if self.dragging:
+            mouse_x = pg.mouse.get_pos()[0]
+            # 計算滑鼠在滑桿的相對位置 (0~1)
+            relative_x = (mouse_x - self.rect.x) / self.rect.width
+            self.set_value(relative_x)
+
+    def draw(self, surface):
+        # 1. 畫背景軌道
+        pg.draw.rect(surface, self.bg_color, self.rect, border_radius=self.rect.height//2)
+        
+        # 2. 畫已填滿的部分 (左邊)
+        fill_rect = pg.Rect(self.rect.x, self.rect.y, int(self.rect.width * self.val), self.rect.height)
+        pg.draw.rect(surface, self.fill_color, fill_rect, border_radius=self.rect.height//2)
+        
+        # 3. 畫圓形滑塊 (Handle)
+        handle_x = self.rect.x + int(self.rect.width * self.val)
+        handle_y = self.rect.centery
+        radius = self.rect.height + 2 # 讓滑塊比軌道大一點
+        pg.draw.circle(surface, self.handle_color, (handle_x, handle_y), radius)
+
 def collision_by_mask_with_mouse(rect,mask):
     mouse_pos = pg.mouse.get_pos()
     # 計算滑鼠相對於圖片的偏移量

@@ -1,0 +1,36 @@
+{
+    "system": {
+        "volume": 0.5
+    },
+    "progress": {
+        "chapter": 1,
+        "playtime_seconds": 6.466620445251465
+    },
+    "player": {
+        "x": 3,
+        "y": 0,
+        "money": 200,
+        "runes": {
+            "fire_rune": 0,
+            "ice_rune": 0
+        }
+    },
+    "inventory": [
+        {
+            "id": "potion",
+            "count": 1
+        },
+        {
+            "id": "potion",
+            "count": 1
+        }
+    ],
+    "party": [
+        {
+            "name": "勇者",
+            "hp": 80,
+            "max_hp": 100,
+            "status": "normal"
+        }
+    ]
+}

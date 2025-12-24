@@ -1,0 +1,48 @@
+{
+    "chapter": 1,
+    "money": 100,
+    "playtime": 24.622688055038452,
+    "volume": 0.5,
+    "sfx_volume": 0.5,
+    "party_data": [
+        {
+            "name": "U",
+            "desc": "\u5e73\u8861\u578b\u6230\u58eb",
+            "hp": 80,
+            "max_hp": 100
+        },
+        {
+            "name": "\u6cd5\u5e2b",
+            "desc": "\u9ad8\u8f38\u51fa\u55ae\u4f4d",
+            "hp": 45,
+            "max_hp": 60
+        },
+        {
+            "name": "\u76dc\u8cca",
+            "desc": "\u9ad8\u901f\u5ea6\u55ae\u4f4d",
+            "hp": 60,
+            "max_hp": 70
+        },
+        {
+            "name": "\u7267\u5e2b",
+            "desc": "\u652f\u63f4\u578b\u55ae\u4f4d",
+            "hp": 50,
+            "max_hp": 60
+        },
+        {
+            "name": "\u9a0e\u58eb",
+            "desc": "\u9632\u79a6\u578b\u55ae\u4f4d",
+            "hp": 110,
+            "max_hp": 120
+        }
+    ],
+    "upgrade_log": [
+        {
+            "timestamp": "2025-12-23 21:27:56",
+            "char_name": "U",
+            "source": "Rune: Berkano",
+            "effect": "HP UP"
+        }
+    ],
+    "timestamp": "12/23 21:28"
+}

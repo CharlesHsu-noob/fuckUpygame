@@ -1,1 +1,8 @@
-{"current_page": 0, "slider_value": 0.78}
+{
+    "player": {
+        "x": 2,
+        "y": 2,
+        "hp": 100,
+        "gold": 140
+    }
+}
