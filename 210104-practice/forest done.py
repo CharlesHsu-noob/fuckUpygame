@@ -55,6 +55,7 @@ class char(pg.sprite.Sprite):
 player_x = 450
 player_y = 300 # 玩家初始位置
 bg_scroll_anchor_y = 300 # 背景捲動基準點 (與初始位置相同，讓一開始背景位置正確)
+BG_SCROLL_ANCHOR_INITIAL = bg_scroll_anchor_y
 player_vx = 0
 player_vy = 0
 char_u=char(player_img,player_x,player_y)
@@ -82,7 +83,7 @@ PLATFORM_HEIGHT = 15
 
 platform_positions = [
     (0, 322),(80, 322),(160, 322),(240, 322),(320, 322),(400, 322),(480, 322),
-    (50, 250),(350, 230),(150, 170),(200, 90),(130, 10),
+    (50, 240),(350, 230),(150, 160),(200, 90),(130, 10),
     (50, -80),(120, -160),(260, -230),(300, -300),(250, -380),
     (200, -450),(120, -530),(50, -590),(0, -640),
 ]
@@ -204,32 +205,38 @@ while running:
         # 修正：背景捲動基準點也要跟著移動，確保背景與玩家同步
         bg_scroll_anchor_y += scroll
 
-    # ---------- 向下捲動 (鏡頭跟隨) ----------
+    # ---------- 向下捲動 (鏡頭跟隨，限制最低高度) ----------
+    INITIAL_GROUND_Y = 322
+    INITIAL_PLAYER_Y = 315
     if player_y > SCROLL_DOWN_TRIGGER_Y:
         raw_scroll = player_y - SCROLL_DOWN_TRIGGER_Y
-        MAX_SCROLL = 15  # 放寬限速，讓鏡頭跟得緊一點
+        MAX_SCROLL = 15
         scroll = min(raw_scroll, MAX_SCROLL)
-        
-        # 限制：不要捲動超過初始地面位置 (防止看到地下)
-        # 假設 platforms[0] 是地面參考點，初始 y 為 322
-        # 如果 platforms[0].y - scroll < 322，則修正 scroll
-        INITIAL_GROUND_Y = 322
+
+        # 1️⃣ 限制地面不能低於初始地面
         if platforms[0].y - scroll < INITIAL_GROUND_Y:
             scroll = platforms[0].y - INITIAL_GROUND_Y
 
-        # 修正：執行捲動
+        # 2️⃣ 限制玩家不能低於初始畫面高度
+        if player_y - scroll > INITIAL_PLAYER_Y:
+            scroll = player_y - INITIAL_PLAYER_Y
+
+        # 3️⃣ 若已無法再捲動，直接歸位
         if scroll > 0:
             player_y -= scroll
             for plat in platforms:
                 plat.y -= scroll
+
             bg_scroll_anchor_y -= scroll
+            bg_scroll_anchor_y = max(bg_scroll_anchor_y, BG_SCROLL_ANCHOR_INITIAL)
+
 
     # ================= 繪製（畫在 world_surface） =================
     world_surface.fill((0, 0, 0, 0))
 
     for plat in platforms:
         if plat in ground:
-            pg.draw.rect(world_surface, GREEN, plat)
+            pass
         else:
             world_surface.blit(rock_img, plat.topleft)
     blit_offset_y=5
