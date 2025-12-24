@@ -16,7 +16,24 @@ WIDTH, HEIGHT = screen.get_size()
 pygame.display.set_caption("Fight Prototype")
 clock = pygame.time.Clock()
 
-# --- 【資源路徑設定】 ---
+# ==========================================
+# ★★★ 【參數設定區 (已繼承你的數值)】 ★★★
+# ==========================================
+
+# 敵人設定 (使用你提供的數值)
+SNAKE_CONFIG = {"hp": 80, "scale": 0.38, "pos_x": 0.25, "pos_y": 0.55}
+OWL_CONFIG = {"hp": 60, "scale": 0.40, "pos_x": 0.5, "pos_y": 0.45}
+FOX_CONFIG = {"hp": 100, "scale": 0.28, "pos_x": 0.75, "pos_y": 0.45}
+BASE_ENEMY_DMG = 8
+HP_BAR_OFFSET_Y = -20
+
+# ★★★ Select 圖示位置調整變數 (已繼承) ★★★
+SELECT_OFFSET_X = 0
+SELECT_OFFSET_Y = 230 
+
+# ==========================================
+# ★★★ 【資源路徑與圖片載入】 ★★★
+# ==========================================
 current_path = os.path.dirname(__file__) 
 
 def load_img(sub_path, alpha=True):
@@ -25,431 +42,379 @@ def load_img(sub_path, alpha=True):
         return pygame.image.load(path).convert_alpha() if alpha else pygame.image.load(path).convert()
     return None
 
-# --- 【圖片載入】 ---
 bg_raw = load_img("photo/forest_battle.png", False)
 bg_img = pygame.transform.scale(bg_raw, (int(WIDTH * 1.05), int(HEIGHT * 1.05))) if bg_raw else pygame.Surface((WIDTH, HEIGHT))
-
-fox_raw = load_img("photo/forest_fox.png")
-fox_img = None
-if fox_raw:
-    f_h = int(HEIGHT * 0.35)
-    f_w = int(fox_raw.get_width() * (f_h / fox_raw.get_height()))
-    fox_img = pygame.transform.scale(fox_raw, (f_w, f_h))
-
 bite_raw = load_img("photo/bite.png")
+def_icon_raw = load_img("photo/def_up.png")
+
+# 選怪游標 (select.png)
+select_raw = load_img("photo/select.png")
+select_img = None
+if select_raw:
+    # 使用你設定的大小：螢幕高度的 20%
+    s_h = int(HEIGHT * 0.2)
+    s_w = int(select_raw.get_width() * (s_h / select_raw.get_height()))
+    select_img = pygame.transform.scale(select_raw, (s_w, s_h))
 
 # ==========================================
-# ★★★ 【視覺特效：紅框濾鏡】 ★★★
+# ★★★ 【字體定義】 ★★★
 # ==========================================
-def create_blood_vignette(w, h):
-    grad_w, grad_h = w // 10, h // 10
-    grad_surf = pygame.Surface((grad_w, grad_h), pygame.SRCALPHA)
-    
-    for y in range(grad_h):
-        for x in range(grad_w):
-            dx = abs(x - grad_w/2) / (grad_w/2)
-            dy = abs(y - grad_h/2) / (grad_h/2)
-            dist = max(dx, dy) 
+font = pygame.font.SysFont(None, int(HEIGHT * 0.045))
+option_font = pygame.font.SysFont(None, int(HEIGHT * 0.045))
+result_font = pygame.font.SysFont(None, int(HEIGHT * 0.15)) 
+name_font = pygame.font.SysFont(None, int(HEIGHT * 0.1))   
+stats_font = pygame.font.SysFont(None, int(HEIGHT * 0.075)) 
+enemy_hp_font = pygame.font.SysFont(None, int(HEIGHT * 0.025))
+
+# ==========================================
+# ★★★ 【類別：敵人】 ★★★
+# ==========================================
+class Enemy:
+    def __init__(self, name, img_name, config):
+        self.name = name
+        self.max_hp = config["hp"]
+        self.hp = self.max_hp
+        self.buffer_hp = self.max_hp
+        self.buffer_timer = 0
+        
+        raw = load_img(f"photo/{img_name}")
+        if raw:
+            h = int(HEIGHT * config["scale"])
+            w = int(raw.get_width() * (h / raw.get_height()))
+            self.image = pygame.transform.scale(raw, (w, h))
+        else:
+            h = int(HEIGHT * config["scale"])
+            self.image = pygame.Surface((h, h)); self.image.fill((100, 100, 100))
             
-            if dist > 0.5: 
-                alpha = int(255 * ((dist - 0.5) / 0.5))
-                alpha = min(220, alpha)
-                grad_surf.set_at((x, y), (255, 0, 0, alpha))
-            else:
-                grad_surf.set_at((x, y), (0, 0, 0, 0))
-                
-    return pygame.transform.smoothscale(grad_surf, (w, h))
+        self.rect = self.image.get_rect()
+        self.rect.centerx = int(WIDTH * config["pos_x"])
+        self.rect.bottom = int(HEIGHT * config["pos_y"])
+        self.is_dead = False
 
-blood_vignette_img = create_blood_vignette(WIDTH, HEIGHT)
+    def take_damage(self, amount):
+        if self.is_dead: return
+        self.hp = max(0, self.hp - amount)
+        self.buffer_timer = 0.5 
+        if self.hp <= 0: self.is_dead = True
 
-# 受傷特效狀態管理
-impact_state = {
-    "active": False,
-    "max_alpha": 0,    
-    "current_alpha": 0,
-    "shake_amp": 0,    
-    "duration": 0,     
-    "timer": 0
-}
+    def update(self, dt):
+        if self.buffer_hp > self.hp:
+            if self.buffer_timer > 0: self.buffer_timer -= dt
+            else: self.buffer_hp = max(self.hp, self.buffer_hp - 60 * dt)
+        
+    def draw(self, surface, shake_x, shake_y):
+        draw_pos = (self.rect.x + shake_x, self.rect.y + shake_y)
+        if self.is_dead:
+            img_copy = self.image.copy(); img_copy.set_alpha(80) 
+            surface.blit(img_copy, draw_pos)
+        else:
+            surface.blit(self.image, draw_pos)
+            self.draw_hp_bar(surface, shake_x, shake_y)
+
+    def draw_hp_bar(self, surface, sx, sy):
+        bar_w = self.rect.width
+        bar_h = int(HEIGHT * 0.015) 
+        bar_x = self.rect.x + sx
+        bar_y = self.rect.top - bar_h - HP_BAR_OFFSET_Y + sy
+        pygame.draw.rect(surface, (80, 0, 0), (bar_x, bar_y, bar_w, bar_h))
+        if self.max_hp > 0:
+            buff_w = bar_w * (self.buffer_hp / self.max_hp)
+            pygame.draw.rect(surface, (255, 255, 0), (bar_x, bar_y, buff_w, bar_h))
+            hp_w = bar_w * (self.hp / self.max_hp)
+            pygame.draw.rect(surface, (234, 150, 183), (bar_x, bar_y, hp_w, bar_h))
+        pygame.draw.rect(surface, (0, 0, 0), (bar_x, bar_y, bar_w, bar_h), 1)
+        hp_text = f"HP: {int(self.hp)}/{self.max_hp}"
+        text_surf = enemy_hp_font.render(hp_text, True, (255, 255, 255))
+        text_x = bar_x + (bar_w - text_surf.get_width()) // 2
+        text_y = bar_y + bar_h + 2 
+        surface.blit(enemy_hp_font.render(hp_text, True, (0, 0, 0)), (text_x + 1, text_y + 1))
+        surface.blit(text_surf, (text_x, text_y))
+
+enemies = []
+def init_enemies():
+    global enemies; enemies = []
+    enemies.append(Enemy("Snake", "forest_snake.png", SNAKE_CONFIG))
+    enemies.append(Enemy("Owl", "forest_owl.png", OWL_CONFIG))
+    enemies.append(Enemy("Fox", "forest_fox.png", FOX_CONFIG))
+init_enemies()
 
 # ==========================================
-# ★★★ 【UI設定】 ★★★
+# ★★★ 【UI 與 遊戲變數】 ★★★
 # ==========================================
 P_HP_X, P_HP_Y, P_HP_W, P_HP_H = 0.725, 0.615, 0.2, 0.025
-E_HP_X, E_HP_Y, E_HP_W, E_HP_H = 0.40, 0.1, 0.2, 0.025
 OPT_X, OPT_Y, OPT_GAP, OPT_COL_GAP = 0.31, 0.66, 0.10, 0.22
-OPT_COLOR, OPT_FONT_SIZE = (0, 0, 0), 0.045
+OPT_COLOR = (0, 0, 0)
 DEF_IMG_X, DEF_IMG_Y, DEF_IMG_SIZE, DEF_NUM_X_OFF = 0.24, 0.58, 0.05, 0.0001
-BITE_X, BITE_Y, BITE_FINAL_SIZE = 0.16, 0.73, 0.3 
+BITE_X, BITE_Y, BITE_FINAL_SIZE = 0.14, 0.73, 0.3 
 
-# 預縮放防禦圖片
-def_icon_raw = load_img("photo/def_up.png")
+PLAYER_NAME = "Mortis"; NAME_X, NAME_Y = 0.086, 0.877; TEXT_COLOR_GRAY = (220, 220, 220) 
+PLAYER_STATS = {"ATK": 17, "CRT": 25, "DEF": 25, "INT": 23}
+STATS_X, STATS_Y = 0.725, 0.73; STATS_SPACING = 0.06 
+
 def_icon_img = None
 if def_icon_raw:
     di_h = int(HEIGHT * DEF_IMG_SIZE)
     di_w = int(def_icon_raw.get_width() * (di_h / def_icon_raw.get_height()))
     def_icon_img = pygame.transform.scale(def_icon_raw, (di_w, di_h))
 
-# --- 遊戲數據 (保留原樣) ---
-PLAYER_HP = 100
-PLAYER_MAX_HP = 100
-ENEMY_HP = 100
-ENEMY_MAX_HP = 100
-MAX_ENERGY = 10
-player_energy = MAX_ENERGY
+blood_vignette_img = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+def create_blood_vignette(w, h):
+    grad_surf = pygame.Surface((w // 10, h // 10), pygame.SRCALPHA)
+    for y in range(h // 10):
+        for x in range(w // 10):
+            dist = max(abs(x - w//20) / (w//20), abs(y - h//20) / (h//20))
+            if dist > 0.5: 
+                alpha = min(220, int(255 * ((dist - 0.5) / 0.5)))
+                grad_surf.set_at((x, y), (255, 0, 0, alpha))
+    return pygame.transform.smoothscale(grad_surf, (w, h))
+blood_vignette_img = create_blood_vignette(WIDTH, HEIGHT)
 
-# ★★★ 遊戲狀態變數 ★★★
-game_over = False
-victory = False
-
-font = pygame.font.SysFont(None, int(HEIGHT * OPT_FONT_SIZE))
-option_font = pygame.font.SysFont(None, int(HEIGHT * OPT_FONT_SIZE))
-damage_font = pygame.font.SysFont(None, int(HEIGHT * 0.04))
-result_font = pygame.font.SysFont(None, int(HEIGHT * 0.15)) 
-
+impact_state = {"active": False, "max_alpha": 0, "current_alpha": 0, "shake_amp": 0, "duration": 0, "timer": 0}
+PLAYER_HP = 100; PLAYER_MAX_HP = 100; MAX_ENERGY = 10; player_energy = MAX_ENERGY
+player_buffer_hp = PLAYER_HP; player_buffer_timer = 0; BUFFER_SPEED = 40; BUFFER_DELAY = 0.5
+game_over = False; victory = False
 options = ["Normal Attack", "Special Attack", "Defend", "End this round"]
-energy_cost = [3, 5, 4, 0]
-selected_option = None
-pending_action = False
-damage_texts = []
-energy_recover_queue = []
-energy_recover_timer = [0] * MAX_ENERGY
-shield_turns = 0
-recover_timer = 0
-ENERGY_DELAY = 0.1
-pending_energy_recover = 0 
+energy_cost = [3, 5, 4, 0]; selected_option = None
+energy_recover_queue = []; energy_recover_timer = [0] * MAX_ENERGY
+shield_turns = 0; recover_timer = 0; ENERGY_DELAY = 0.1; pending_energy_recover = 0 
 
-# 敵人攻擊流程控制
-pending_enemy_attack = False 
-enemy_attack_timer = 0       
-pending_damage_value = 0
-pending_impact_level = 0      
+# ★★★ 攻擊隊列變數 (取代原本的一次性攻擊) ★★★
+enemy_turn_active = False   # 敵人回合是否正在進行
+enemy_attack_queue = []     # 待執行的攻擊 (每個元素是傷害值)
+enemy_action_timer = 0      # 攻擊間隔計時器
 
-# 特效變數
 bite_anim = {"active": False, "timer": 0}
-fox_pos_x = 0
-fox_pos_y = 0
-
-# 彩帶特效
 confetti_particles = []
-CONFETTI_COLORS = [
-    (255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), 
-    (0, 255, 255), (255, 0, 255), (255, 165, 0), (255, 192, 203), 
-    (173, 216, 230), (238, 130, 238)
-]
+selecting_target = False  
+target_skill = None       
+current_target_idx = 0    
 
-def trigger_bite():
-    bite_anim["active"] = True
-    bite_anim["timer"] = 0
-
+def trigger_bite(): bite_anim["active"] = True; bite_anim["timer"] = 0
 def trigger_impact(level):
-    """觸發受傷瞬間特效"""
-    impact_state["active"] = True
-    impact_state["timer"] = 0
-    
-    if level == 3: # 重傷
-        impact_state["max_alpha"] = 255
-        impact_state["shake_amp"] = 30
-        impact_state["duration"] = 1.0      
-    elif level == 2: # 中傷
-        impact_state["max_alpha"] = 160
-        impact_state["shake_amp"] = 15
-        impact_state["duration"] = 0.6
-    else: # 輕傷
-        impact_state["max_alpha"] = 60
-        impact_state["shake_amp"] = 5
-        impact_state["duration"] = 0.3
-    
+    impact_state["active"] = True; impact_state["timer"] = 0
+    if level == 3: impact_state["max_alpha"] = 255; impact_state["shake_amp"] = 30; impact_state["duration"] = 1.0
+    elif level == 2: impact_state["max_alpha"] = 160; impact_state["shake_amp"] = 15; impact_state["duration"] = 0.6
+    else: impact_state["max_alpha"] = 60; impact_state["shake_amp"] = 5; impact_state["duration"] = 0.3
     impact_state["current_alpha"] = impact_state["max_alpha"]
 
 def create_confetti():
-    return {
-        'x': random.randint(0, WIDTH),
-        'y': random.randint(-HEIGHT // 2, -10), 
-        'color': random.choice(CONFETTI_COLORS),
-        'speed_y': random.uniform(3, 7),     
-        'sway_freq': random.uniform(0.05, 0.2), 
-        'sway_amp': random.uniform(1, 3),    
-        'tumble_speed': random.uniform(0.1, 0.3), 
-        'tumble_phase': random.uniform(0, math.pi * 2), 
-        'width': random.randint(8, 15),      
-        'height': random.randint(15, 25),    
-        'timer': 0
-    }
+    return {'x': random.randint(0, WIDTH), 'y': random.randint(-HEIGHT//2, -10), 'color': random.choice([(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]), 'speed_y': random.uniform(3, 7)}
 
+def check_victory(): return all(e.is_dead for e in enemies)
 def reset_game():
-    global PLAYER_HP, ENEMY_HP, player_energy, shield_turns, game_over, victory
-    global pending_action, selected_option, damage_texts
-    global pending_enemy_attack, bite_anim, energy_recover_queue, confetti_particles
-    global impact_state
+    global PLAYER_HP, player_energy, shield_turns, game_over, victory, selected_option
+    global bite_anim, energy_recover_queue, confetti_particles, impact_state
+    global player_buffer_hp, player_buffer_timer, selecting_target, target_skill
+    global enemy_turn_active, enemy_attack_queue, enemy_action_timer
     
-    PLAYER_HP = PLAYER_MAX_HP
-    ENEMY_HP = ENEMY_MAX_HP
-    player_energy = MAX_ENERGY
-    shield_turns = 0
-    game_over = False
-    victory = False
-    pending_action = False
+    PLAYER_HP = PLAYER_MAX_HP; player_energy = MAX_ENERGY
+    player_buffer_hp = PLAYER_HP; player_buffer_timer = 0
+    shield_turns = 0; game_over = False; victory = False
     selected_option = None
-    damage_texts = []
-    pending_enemy_attack = False
-    bite_anim = {"active": False, "timer": 0}
-    energy_recover_queue = []
-    confetti_particles = [] 
     
-    impact_state["active"] = False
-    impact_state["current_alpha"] = 0
+    # 重置攻擊隊列
+    enemy_turn_active = False; enemy_attack_queue = []
+    
+    bite_anim = {"active": False, "timer": 0}; energy_recover_queue = []
+    confetti_particles = []; impact_state["active"] = False
+    selecting_target = False; target_skill = None
+    init_enemies() 
 
 def draw_scene(dt, is_background=False):
-    global recover_timer, player_energy, pending_energy_recover, fox_pos_x, fox_pos_y
-    global pending_enemy_attack, enemy_attack_timer, pending_damage_value, PLAYER_HP, game_over, victory
-    global confetti_particles, pending_impact_level
+    global recover_timer, player_energy, pending_energy_recover
+    global enemy_action_timer, enemy_turn_active, PLAYER_HP, game_over, victory
+    global confetti_particles, player_buffer_hp, player_buffer_timer
     
-    # 1. 震動計算
     shake_x, shake_y = 0, 0
-    base_shake = 0
-    if bite_anim["active"] and bite_anim["timer"] <= 0.35:
-        base_shake = 5
-    
-    impact_shake = 0
-    if impact_state["active"] and impact_state["timer"] < 0.2:
-        impact_shake = impact_state["shake_amp"]
-
-    total_shake = base_shake + impact_shake
+    total_shake = 0
+    if bite_anim["active"] and bite_anim["timer"] <= 0.35: total_shake += 5
+    if impact_state["active"] and impact_state["timer"] < 0.2: total_shake += impact_state["shake_amp"]
     if total_shake > 0:
         shake_x = random.randint(-total_shake, total_shake)
         shake_y = random.randint(-total_shake, total_shake)
 
-    # 2. 繪製背景
     screen.blit(bg_img, (-WIDTH*0.025 + shake_x, -HEIGHT*0.025 + shake_y))
 
-    # --- 狐狸繪製 ---
-    ex_bar, ey_bar, ew_bar, eh_bar = WIDTH * E_HP_X, HEIGHT * E_HP_Y, WIDTH * E_HP_W, HEIGHT * E_HP_H
-    if fox_img:
-        base_fox_x = ex_bar + (ew_bar // 2) - (fox_img.get_width() // 2)
-        base_fox_y = ey_bar + eh_bar * 1 
+    for enemy in enemies:
+        enemy.update(dt)
+        enemy.draw(screen, shake_x, shake_y)
+
+    # ★★★ 繪製選怪游標 (使用你的 SELECT_OFFSET_X / Y) ★★★
+    if selecting_target and select_img and not (game_over or victory):
+        float_y = math.sin(pygame.time.get_ticks() * 0.01) * 10
         
-        offset_x, offset_y = 0, 0
-        if bite_anim["active"]:
-            t = bite_anim["timer"]
-            attack_duration, hold_duration, fade_duration = 0.15, 0.6, 0.2
-            total_time = attack_duration + hold_duration + fade_duration
-            lunge_dist_x, lunge_dist_y = WIDTH * 0.05, HEIGHT * 0.03 
+        def draw_cursor_on(target):
+            # 這裡套用了你要求的偏移量 SELECT_OFFSET_Y = 230
+            cx = target.rect.centerx - select_img.get_width() // 2 + shake_x + SELECT_OFFSET_X
+            cy = target.rect.top - select_img.get_height() + float_y + shake_y + SELECT_OFFSET_Y
+            screen.blit(select_img, (cx, cy))
 
-            if t <= attack_duration:
-                p = t / attack_duration
-                offset_x, offset_y = -lunge_dist_x * p, lunge_dist_y * p
-            elif t <= (attack_duration + hold_duration):
-                offset_x, offset_y = -lunge_dist_x, lunge_dist_y
-            elif t <= total_time:
-                p = 1.0 - ((t - (attack_duration + hold_duration)) / fade_duration)
-                offset_x, offset_y = -lunge_dist_x * p, lunge_dist_y * p
+        if target_skill == 0:
+            if 0 <= current_target_idx < len(enemies):
+                target = enemies[current_target_idx]
+                if not target.is_dead:
+                    draw_cursor_on(target)
 
-        fox_pos_x = base_fox_x + offset_x + shake_x
-        fox_pos_y = base_fox_y + offset_y + shake_y
-        screen.blit(fox_img, (fox_pos_x, fox_pos_y))
+        elif target_skill == 1:
+            for enemy in enemies:
+                if not enemy.is_dead:
+                    draw_cursor_on(enemy)
 
-    # ==========================================
-    # ★★★ 紅框特效邏輯 (Impact + Low HP) ★★★
-    # ==========================================
-    
-    # 1. 計算「受傷瞬間」的 Alpha (Impact)
     impact_alpha = 0
     if impact_state["active"]:
         impact_state["timer"] += dt
         if impact_state["timer"] < impact_state["duration"]:
-            progress = impact_state["timer"] / impact_state["duration"]
-            impact_state["current_alpha"] = int(impact_state["max_alpha"] * (1 - progress))
+            p = impact_state["timer"] / impact_state["duration"]
+            impact_state["current_alpha"] = int(impact_state["max_alpha"] * (1 - p))
             impact_alpha = impact_state["current_alpha"]
-        else:
-            impact_state["active"] = False
-            impact_state["current_alpha"] = 0
+        else: impact_state["active"] = False
 
-    # 2. 計算「殘血常駐」的 Alpha (Low HP)
     low_hp_alpha = 0
-    if PLAYER_HP / PLAYER_MAX_HP <= 0.3 and not victory: # 血量低於30%且未勝利
-        # 使用 Sine 波產生呼吸效果 (範圍約 30 ~ 100 透明度)
-        time_ms = pygame.time.get_ticks()
-        # math.sin 輸出 -1~1，調整為 0~1 區間
-        pulse = (math.sin(time_ms * 0.003) + 1) * 0.5 
+    if PLAYER_HP / PLAYER_MAX_HP <= 0.3 and not victory:
+        pulse = (math.sin(pygame.time.get_ticks() * 0.003) + 1) * 0.5 
         low_hp_alpha = int(30 + 70 * pulse)
 
-    # 3. 取兩者最大值 (確保被打的瞬間會蓋過呼吸燈)
     final_alpha = max(impact_alpha, low_hp_alpha)
-            
     if final_alpha > 0:
         blood_vignette_img.set_alpha(final_alpha)
         screen.blit(blood_vignette_img, (0, 0))
 
-    # --- UI 繪製 (血條/文字) ---
+    if player_buffer_hp > PLAYER_HP:
+        if player_buffer_timer > 0: player_buffer_timer -= dt
+        else: player_buffer_hp = max(PLAYER_HP, player_buffer_hp - BUFFER_SPEED * dt)
+    elif player_buffer_hp < PLAYER_HP: player_buffer_hp = PLAYER_HP
+
     px, py, pw, ph = WIDTH * P_HP_X, HEIGHT * P_HP_Y, WIDTH * P_HP_W, HEIGHT * P_HP_H
     pygame.draw.rect(screen, (110, 204, 149), (px, py, pw, ph)) 
+    pygame.draw.rect(screen, (255, 255, 255), (px, py, pw * (player_buffer_hp / PLAYER_MAX_HP), ph)) 
     pygame.draw.rect(screen, (150, 234, 186), (px, py, pw * (PLAYER_HP / PLAYER_MAX_HP), ph)) 
-    screen.blit(font.render(f"HP: {PLAYER_HP}/{PLAYER_MAX_HP}", True, (0, 0, 0)), (px, py + ph * 1.2))
+    screen.blit(font.render(f"HP: {int(PLAYER_HP)}/{PLAYER_MAX_HP}", True, (0, 0, 0)), (px, py + ph * 1.2))
     
-    pygame.draw.rect(screen, (219, 120, 158), (ex_bar, ey_bar, ew_bar, eh_bar)) 
-    pygame.draw.rect(screen, (234, 150, 183), (ex_bar, ey_bar, ew_bar * (ENEMY_HP / ENEMY_MAX_HP), eh_bar)) 
-    screen.blit(font.render(f"HP: {ENEMY_HP}/{ENEMY_MAX_HP}", True, (0, 0, 0)), (ex_bar, ey_bar + eh_bar * 1.2))
+    name_x, name_y = WIDTH * NAME_X, HEIGHT * NAME_Y
+    screen.blit(name_font.render(PLAYER_NAME, True, (0, 0, 0)), (name_x + 4, name_y + 4))
+    screen.blit(name_font.render(PLAYER_NAME, True, TEXT_COLOR_GRAY), (name_x, name_y))
+    
+    stats_sx, stats_sy = WIDTH * STATS_X, HEIGHT * STATS_Y
+    for idx, (key, value) in enumerate(PLAYER_STATS.items()):
+        s_str = f"{key} {value}"
+        cy = stats_sy + (idx * (HEIGHT * STATS_SPACING))
+        screen.blit(stats_font.render(s_str, True, (0, 0, 0)), (stats_sx + 2, cy + 2))
+        screen.blit(stats_font.render(s_str, True, TEXT_COLOR_GRAY), (stats_sx, cy))
 
-    # 損血文字
-    for dmg in damage_texts[:]:
-        dmg['y'] -= 30 * dt; dmg['timer'] += dt
-        dmg['alpha'] = max(0, 255 * (1 - dmg['timer'] / 1.0))
-        txt = damage_font.render(f"-{dmg['damage']}", True, (255, 100, 0) if dmg['target'] == 'player' else (255, 255, 0))
-        txt.set_alpha(int(dmg['alpha']))
-        screen.blit(txt, (dmg['x'] - txt.get_width() // 2, dmg['y'] - txt.get_height() // 2))
-        if dmg['timer'] >= 1.0: damage_texts.remove(dmg)
-
-    # 能量
     for i in range(MAX_ENERGY):
-        if energy_recover_timer[i] > 0:
-            energy_recover_timer[i] = max(0, energy_recover_timer[i] - dt)
+        if energy_recover_timer[i] > 0: energy_recover_timer[i] = max(0, energy_recover_timer[i] - dt)
 
     if not is_background:
-        # 敵人攻擊邏輯
-        if pending_enemy_attack and not victory: 
-            enemy_attack_timer += dt
-            if enemy_attack_timer >= 0.2:
-                trigger_bite()
-                trigger_impact(pending_impact_level)
-                
-                actual_damage = pending_damage_value
-                PLAYER_HP = max(0, PLAYER_HP - actual_damage)
-                damage_texts.append({'damage': actual_damage, 'x': WIDTH * 0.12, 'y': HEIGHT * 0.05, 'alpha': 255, 'timer': 0, 'target': 'player'})
-                
-                if PLAYER_HP <= 0:
-                    game_over = True
-                
-                pending_energy_recover = 4 
-                pending_enemy_attack = False
-                enemy_attack_timer = 0
+        # ★★★ 新增：敵人回合的攻擊邏輯 (一下一下打) ★★★
+        if enemy_turn_active and not victory and not game_over:
+            enemy_action_timer += dt
+            # 每隔 0.8 秒觸發一次攻擊
+            if enemy_action_timer >= 0.8:
+                enemy_action_timer = 0
+                if enemy_attack_queue:
+                    # 取出一個傷害值
+                    dmg = enemy_attack_queue.pop(0)
+                    
+                    # 觸發動畫與扣血
+                    trigger_bite()
+                    trigger_impact(2) 
+                    PLAYER_HP = max(0, PLAYER_HP - dmg)
+                    player_buffer_timer = BUFFER_DELAY 
+                    
+                    if PLAYER_HP <= 0: game_over = True
+                else:
+                    # 隊列清空，回合結束，開始回能
+                    enemy_turn_active = False
+                    pending_energy_recover = 4 
 
-        # 能量回復
         if not (game_over or victory):
             if pending_energy_recover > 0:
                 recover_timer += dt
                 if recover_timer >= ENERGY_DELAY:
-                    if player_energy < MAX_ENERGY:
-                        energy_recover_queue.append(player_energy); player_energy += 1
+                    if player_energy < MAX_ENERGY: energy_recover_queue.append(player_energy); player_energy += 1
                     pending_energy_recover -= 1; recover_timer = 0
             if energy_recover_queue:
                 recover_timer += dt
                 if recover_timer >= ENERGY_DELAY:
                     idx = energy_recover_queue.pop(0); energy_recover_timer[idx] = 1.0; recover_timer = 0
 
-    # 選項
-    start_x, start_y, spacing_y, spacing_x = WIDTH * OPT_X, HEIGHT * OPT_Y, HEIGHT * OPT_GAP, WIDTH * OPT_COL_GAP
+    sx, sy, g_y, g_x = WIDTH * OPT_X, HEIGHT * OPT_Y, HEIGHT * OPT_GAP, WIDTH * OPT_COL_GAP
     for i, option in enumerate(options):
         col, row = i % 2, i // 2
-        curr_x, curr_y = start_x + (col * spacing_x), start_y + (row * spacing_y)
-        color = (200, 0, 0) if (selected_option == i and pending_action and player_energy < energy_cost[i]) else OPT_COLOR
+        cx, cy = sx + (col * g_x), sy + (row * g_y)
+        is_highlighted = (selected_option == i and not selecting_target) or (selecting_target and target_skill == i)
+        
+        # 敵人攻擊時，隱藏選單 Highlight
+        if enemy_turn_active: is_highlighted = False
+        
+        color = (200, 0, 0) if (is_highlighted and player_energy < energy_cost[i]) else OPT_COLOR
+        
         text = option_font.render(f"{i+1}. {option}", True, color)
-        screen.blit(text, (curr_x, curr_y))
-        if selected_option == i and (not pending_action or player_energy >= energy_cost[i]) and not (game_over or victory):
-            pygame.draw.circle(screen, (200, 50, 50), (int(curr_x - 10), int(curr_y + text.get_height()/2)), 5)
+        screen.blit(text, (cx, cy))
+        
+        if is_highlighted and player_energy >= energy_cost[i] and not (game_over or victory):
+            pygame.draw.circle(screen, (200, 50, 50), (int(cx - 10), int(cy + text.get_height()/2)), 5)
 
-    # 防禦標誌
     if shield_turns > 0 and def_icon_img:
         fx, fy = WIDTH * DEF_IMG_X, HEIGHT * DEF_IMG_Y
         screen.blit(def_icon_img, (fx, fy))
         num_t = font.render(str(shield_turns), True, OPT_COLOR)
         screen.blit(num_t, (fx + def_icon_img.get_width() + (WIDTH * DEF_NUM_X_OFF), fy + (def_icon_img.get_height()//2) - (num_t.get_height()//2)))
 
-    # 咬擊動畫
     if bite_anim["active"]:
         bite_anim["timer"] += dt
         t = bite_anim["timer"]
-        attack_duration, hold_duration, fade_duration = 0.15, 0.6, 0.2
-        total_time = attack_duration + hold_duration + fade_duration
-        tx, ty = WIDTH * BITE_X, HEIGHT * BITE_Y
-        
-        if bite_raw:
-            fw = int(HEIGHT * BITE_FINAL_SIZE * (bite_raw.get_width() / bite_raw.get_height()))
-            fh = int(HEIGHT * BITE_FINAL_SIZE)
-        else:
-            fw, fh = int(HEIGHT * BITE_FINAL_SIZE), int(HEIGHT * BITE_FINAL_SIZE)
-        
-        start_cx = fox_pos_x + (fox_img.get_width() // 2) if fox_img else WIDTH // 2
-        start_cy = fox_pos_y + (fox_img.get_height() // 2) if fox_img else HEIGHT // 2
-        alpha = 255
-        cw, ch, cx, cy = fw, fh, tx - fw//2, ty - fh//2
-
-        if t <= attack_duration:
-            p = t / attack_duration
-            start_scale = 3.0; current_scale = start_scale - (start_scale - 1.0) * p 
-            cw, ch = int(fw * current_scale), int(fh * current_scale)
-            cur_cx = start_cx + (tx - start_cx) * p
-            cur_cy = start_cy + (ty - start_cy) * p
-            cx, cy = cur_cx - cw // 2, cur_cy - ch // 2
-        elif t <= (attack_duration + hold_duration):
-            pass
-        elif t <= total_time:
-            p = (t - (attack_duration + hold_duration)) / fade_duration
-            alpha = int(255 * (1 - p))
-        else:
-            bite_anim["active"] = False
-        
-        if bite_anim["active"]:
-            final_x = cx + shake_x
-            final_y = cy + shake_y
+        dur, hold, fade = 0.15, 0.6, 0.2
+        if t <= dur + hold + fade:
+            alpha = 255
+            if t > dur + hold: alpha = int(255 * (1 - (t - dur - hold)/fade))
+            tx, ty = WIDTH * BITE_X, HEIGHT * BITE_Y
+            size = int(HEIGHT * BITE_FINAL_SIZE)
+            if t <= dur: size = int(size * (3.0 - 2.0 * (t/dur)))
+            final_x = tx - size // 2 + shake_x
+            final_y = ty - size // 2 + shake_y
             if bite_raw:
-                s = pygame.transform.scale(bite_raw, (cw, ch))
-                if alpha < 255: s.set_alpha(alpha)
+                s = pygame.transform.scale(bite_raw, (size, size))
+                s.set_alpha(alpha)
                 screen.blit(s, (final_x, final_y))
-            else:
-                s = pygame.Surface((cw, ch)); s.fill((255, 0, 0)); s.set_alpha(alpha)
-                screen.blit(s, (final_x, final_y))
+        else: bite_anim["active"] = False
 
-    # 能量條
     ex, ey, es, ew, eh = WIDTH * 0.33, HEIGHT * 0.88, WIDTH * 0.035, 8, 16
     for i in range(MAX_ENERGY):
         cx = ex + i * es
         pts = [(cx, ey), (cx + ew, ey - eh), (cx + 2*ew, ey), (cx + ew, ey + eh)]
+        current_cost = 0
+        if selecting_target and target_skill is not None:
+            current_cost = energy_cost[target_skill]
+        elif selected_option is not None:
+            current_cost = energy_cost[selected_option]
+
         if energy_recover_timer[i] > 0:
             s = pygame.Surface((ew*2+2, eh*2+2), pygame.SRCALPHA)
             pygame.draw.polygon(s, (0, 255, 255, int(255 * energy_recover_timer[i])), [(0, eh), (ew, 0), (ew*2, eh), (ew, eh*2)])
             screen.blit(s, (cx, ey - eh))
-        elif pending_action and selected_option is not None:
-            cost = energy_cost[selected_option]
-            if i < player_energy - cost: pygame.draw.polygon(screen, (0, 255, 255), pts)
-            elif i >= player_energy - cost and i < player_energy: pygame.draw.polygon(screen, (0, 255, 255), pts, 1)
+        elif current_cost > 0:
+            if i < player_energy - current_cost: pygame.draw.polygon(screen, (0, 255, 255), pts)
+            elif i >= player_energy - current_cost and i < player_energy: pygame.draw.polygon(screen, (0, 255, 255), pts, 1)
         else:
             if i < player_energy: pygame.draw.polygon(screen, (0, 255, 255), pts)
 
-    # 結算
     if game_over or victory:
-        s = pygame.Surface((WIDTH, HEIGHT))
-        s.set_alpha(180)
-        s.fill((0, 0, 0))
+        s = pygame.Surface((WIDTH, HEIGHT)); s.set_alpha(180); s.fill((0, 0, 0))
         screen.blit(s, (0, 0))
-
         if victory:
-            if len(confetti_particles) < 150: 
-                confetti_particles.append(create_confetti())
+            if len(confetti_particles) < 150: confetti_particles.append(create_confetti())
             for p in confetti_particles:
-                p['timer'] += dt
-                p['y'] += p['speed_y'] * dt * 60 
-                sway_offset = math.sin(p['timer'] * p['sway_freq'] * 10) * p['sway_amp']
-                actual_x = p['x'] + sway_offset
-                tumble_scale = abs(math.cos(p['tumble_phase'] + p['timer'] * p['tumble_speed'] * 10))
-                draw_height = max(1, int(p['height'] * tumble_scale))
-                rect = pygame.Rect(actual_x, p['y'] - draw_height // 2, p['width'], draw_height)
-                pygame.draw.rect(screen, p['color'], rect)
-            confetti_particles = [p for p in confetti_particles if p['y'] < HEIGHT]
-
-        if victory:
-            text_str = "VICTORY"
-            text_color = (255, 215, 0)
+                p['y'] += p['speed_y'] * dt * 60
+                pygame.draw.rect(screen, p['color'], (p['x'], p['y'], 10, 10))
+            txt = result_font.render("VICTORY", True, (255, 215, 0))
         else:
-            text_str = "GAME OVER"
-            text_color = (255, 50, 50)
+            txt = result_font.render("GAME OVER", True, (255, 50, 50))
+        screen.blit(txt, (WIDTH // 2 - txt.get_width() // 2, HEIGHT // 2 - txt.get_height()))
+        res = font.render("Press 'R' to Restart", True, (255, 255, 255))
+        screen.blit(res, (WIDTH // 2 - res.get_width() // 2, HEIGHT // 2 + HEIGHT * 0.1))
 
-        main_text = result_font.render(text_str, True, text_color)
-        restart_text = font.render("Press 'R' to Restart", True, (255, 255, 255))
-        screen.blit(main_text, (WIDTH // 2 - main_text.get_width() // 2, HEIGHT // 2 - main_text.get_height()))
-        screen.blit(restart_text, (WIDTH // 2 - restart_text.get_width() // 2, HEIGHT // 2 + HEIGHT * 0.1))
-
-# --- 主迴圈 ---
+# --- Loop ---
 running = True
 while running:
     dt = clock.tick(60) / 1000.0
@@ -462,60 +427,99 @@ while running:
                 if event.key == pygame.K_ESCAPE: running = False
                 if event.key == pygame.K_r: reset_game() 
             continue 
+        
+        # 敵人回合正在進行時，鎖住操作
+        if enemy_turn_active:
+            continue
 
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE: running = False
-            
-            if event.key in (pygame.K_1, pygame.K_KP1): selected_option, pending_action = 0, True
-            elif event.key in (pygame.K_2, pygame.K_KP2): selected_option, pending_action = 1, True
-            elif event.key in (pygame.K_3, pygame.K_KP3): selected_option, pending_action = 2, True
-            elif event.key in (pygame.K_4, pygame.K_KP4): selected_option, pending_action = 3, True
-            
-            elif event.key == pygame.K_SPACE and pending_action:
-                cost = energy_cost[selected_option]
-                if player_energy >= cost:
-                    player_energy -= cost
-                    
-                    if selected_option == 0:
-                        dmg = 10
-                        ENEMY_HP = max(0, ENEMY_HP - dmg)
-                        damage_texts.append({'damage': dmg, 'x': WIDTH * 0.88, 'y': HEIGHT * 0.05, 'alpha': 255, 'timer': 0, 'target': 'enemy'})
-                        if ENEMY_HP <= 0: victory = True
-                    
-                    elif selected_option == 1:
-                        res = play_qte(screen, WIDTH, HEIGHT, draw_bg_func=lambda d: draw_scene(d, is_background=True))
-                        clock.tick(60) 
-                        dmg = 10 if res == "MISS" else (15 if res == "GREAT" else 20)
-                        ENEMY_HP = max(0, ENEMY_HP - dmg)
-                        damage_texts.append({'damage': dmg, 'x': WIDTH * 0.88, 'y': HEIGHT * 0.05, 'alpha': 255, 'timer': 0, 'target': 'enemy'})
-                        if ENEMY_HP <= 0: victory = True
-                    
-                    elif selected_option == 2: shield_turns = 3
-                    
-                    elif selected_option == 3: # End Round
-                        e_dmg = int(20 * random.uniform(0.8, 1.3))
-                        final_dmg = e_dmg
-                        
-                        impact_lvl = 3 # 預設
+            if event.key == pygame.K_ESCAPE: 
+                if selecting_target:
+                    selecting_target = False 
+                    target_skill = None
+                    selected_option = None
+                else: running = False 
 
+            elif selecting_target:
+                if target_skill == 0:
+                    change = 0
+                    if event.key in (pygame.K_a, pygame.K_LEFT): change = -1
+                    elif event.key in (pygame.K_d, pygame.K_RIGHT): change = 1
+                    if change != 0:
+                        for _ in range(len(enemies)):
+                            current_target_idx = (current_target_idx + change) % len(enemies)
+                            if not enemies[current_target_idx].is_dead: break 
+                
+                if event.key in (pygame.K_SPACE, pygame.K_RETURN):
+                    cost = energy_cost[target_skill]
+                    if player_energy >= cost:
+                        player_energy -= cost
+                        if target_skill == 0:
+                            target = enemies[current_target_idx]
+                            if not target.is_dead: target.take_damage(10)
+                            if check_victory(): victory = True
+                        elif target_skill == 1:
+                            res = play_qte(screen, WIDTH, HEIGHT, draw_bg_func=lambda d: draw_scene(d, is_background=True))
+                            clock.tick(60)
+                            dmg = 10 if res == "MISS" else (15 if res == "GREAT" else 20)
+                            for e in enemies:
+                                if not e.is_dead: e.take_damage(dmg)
+                            if check_victory(): victory = True
+
+                        selecting_target = False; target_skill = None; selected_option = None
+            else:
+                if event.key in (pygame.K_1, pygame.K_KP1): selected_option = 0
+                elif event.key in (pygame.K_2, pygame.K_KP2): selected_option = 1
+                elif event.key in (pygame.K_3, pygame.K_KP3): selected_option = 2
+                elif event.key in (pygame.K_4, pygame.K_KP4): selected_option = 3
+
+                elif event.key in (pygame.K_w, pygame.K_UP):
+                    if selected_option is None: selected_option = 0
+                    elif selected_option >= 2: selected_option -= 2 
+                elif event.key in (pygame.K_s, pygame.K_DOWN):
+                    if selected_option is None: selected_option = 0
+                    elif selected_option < 2: selected_option += 2 
+                elif event.key in (pygame.K_a, pygame.K_LEFT):
+                    if selected_option is None: selected_option = 0
+                    elif selected_option % 2 != 0: selected_option -= 1 
+                elif event.key in (pygame.K_d, pygame.K_RIGHT):
+                    if selected_option is None: selected_option = 0
+                    elif selected_option % 2 == 0: selected_option += 1 
+
+                elif event.key in (pygame.K_SPACE, pygame.K_RETURN) and selected_option is not None:
+                    if selected_option == 0: 
+                        if player_energy >= energy_cost[0]:
+                            target_skill = 0; selecting_target = True
+                            for i, e in enumerate(enemies):
+                                if not e.is_dead: current_target_idx = i; break
+                    elif selected_option == 1: 
+                        if player_energy >= energy_cost[1]: target_skill = 1; selecting_target = True
+                    elif selected_option == 2: 
+                        if player_energy >= energy_cost[2]:
+                            player_energy -= energy_cost[2]; shield_turns = 3; selected_option = None
+                    elif selected_option == 3: # End Round -> 觸發隊列式攻擊
+                        # 1. 計算防禦係數
+                        defense_factor = 1.0
                         if shield_turns > 0:
                             results = play_dbd_qte(screen, WIDTH, HEIGHT, draw_bg_func=lambda d: draw_scene(d, is_background=True))
-                            clock.tick(60) 
-                            
-                            perfect_count = results.count("PERFECT")
-                            final_dmg = int(e_dmg * (1 - 0.2 * perfect_count))
+                            clock.tick(60); perf = results.count("PERFECT")
+                            defense_factor = 1.0 - (0.2 * perf) 
                             shield_turns -= 1
-
-                            if perfect_count >= 3: impact_lvl = 1 
-                            elif perfect_count >= 1: impact_lvl = 2 
-                            else: impact_lvl = 3
                         
-                        pending_damage_value = final_dmg
-                        pending_impact_level = impact_lvl 
-                        pending_enemy_attack = True 
-                        enemy_attack_timer = 0
-
-                selected_option, pending_action = None, False
+                        # 2. 建立攻擊隊列
+                        enemy_attack_queue = []
+                        for enemy in enemies:
+                            if not enemy.is_dead:
+                                raw_dmg = BASE_ENEMY_DMG * random.uniform(0.8, 1.2)
+                                final_dmg = int(raw_dmg * defense_factor)
+                                enemy_attack_queue.append(final_dmg)
+                        
+                        # 3. 啟動回合
+                        if enemy_attack_queue:
+                            enemy_turn_active = True
+                            enemy_action_timer = 0.5 
+                        
+                        selected_option = None
 
     draw_scene(dt); pygame.display.flip()
 pygame.quit()
