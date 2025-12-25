@@ -136,7 +136,7 @@ laser_direction = (1.0, 0.3)
 goal_tile = grid[1][9]
 
 # 障礙物
-obstacle_rect = pg.Rect(625, 194, 141, 44)     
+obstacle_rect = pg.Rect(98, 242, 141, 44)     
 
 # ----------------- 助手函式 -----------------
 def draw_laser_emitter():

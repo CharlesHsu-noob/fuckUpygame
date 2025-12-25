@@ -6,13 +6,14 @@ import os
 pg.init()
 
 # ----------------- 參數 -----------------
-GRID_SIZE = 48
+GRID_SIZE = 79
 COLS = 16
 ROWS = 12
-WIDTH, HEIGHT = GRID_SIZE * COLS, GRID_SIZE * ROWS
+WIDTH, HEIGHT = 1920,1080
 FPS = 60
-PLAYER_SPEED = 150 # 平滑移動速度（px/sec）
-
+PLAYER_SPEED = 300 # 平滑移動速度（px/sec）
+OFFSET_X = 330
+OFFSET_Y = 66
 # 顏色
 WHITE = (245, 245, 245)
 BLACK = (20, 20, 20)
@@ -29,6 +30,24 @@ screen = pg.display.set_mode((WIDTH, HEIGHT))
 pg.display.set_caption("Bob")
 
 clock = pg.time.Clock()
+# --- 載入背景 ---
+bg_img = pg.image.load(os.path.join('picture', 'labg_b.png')).convert()
+bg_img = pg.transform.scale(bg_img, (WIDTH, HEIGHT))
+
+# --- 載入圖片資源 (通用縮放邏輯) ---
+def load_and_scale(path, scale_factor, rotate=0):
+    try:
+        img = pg.image.load(os.path.join('picture', path)).convert_alpha()
+    except:
+        s = pg.Surface((GRID_SIZE, GRID_SIZE), pg.SRCALPHA)
+        s.fill((255, 0, 255, 128)) # 紫色方塊代表缺圖
+        img = s
+    
+    target_size = int(GRID_SIZE * scale_factor)
+    img = pg.transform.scale(img, (target_size, target_size))
+    if rotate:
+        img = pg.transform.rotate(img, rotate)
+    return img
 
 # --- 雷射發射器圖片 ---
 laser_emitter1_img = pg.image.load(os.path.join('picture', 'lab_laser_top.png')).convert_alpha()
@@ -74,13 +93,16 @@ class Tile:
     @property
     def center(self):
         return (
-            self.col * GRID_SIZE + GRID_SIZE // 2,
-            self.row * GRID_SIZE + GRID_SIZE // 2
+            OFFSET_X + self.col * GRID_SIZE + GRID_SIZE // 2,
+            OFFSET_Y + self.row * GRID_SIZE + GRID_SIZE // 2
         )
 
     @property
     def rect(self):
-        return pg.Rect(self.col * GRID_SIZE, self.row * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+        # 矩形 = 偏移量 + 格子位置
+        return pg.Rect(OFFSET_X + self.col * GRID_SIZE, 
+                       OFFSET_Y + self.row * GRID_SIZE, 
+                       GRID_SIZE, GRID_SIZE)
 
 class Mirror:
     def __init__(self, angle_deg=45):
@@ -103,10 +125,11 @@ class Mirror:
 
 class Player:
     def __init__(self, col=1, row=1):
-        self.x = col * GRID_SIZE + GRID_SIZE//2
-        self.y = row * GRID_SIZE + GRID_SIZE//2
         self.col = col
         self.row = row
+        # 初始像素位置也要加上 OFFSET
+        self.x = OFFSET_X + col * GRID_SIZE + GRID_SIZE//2
+        self.y = OFFSET_Y + row * GRID_SIZE + GRID_SIZE//2
         self.holding = None
         self.adjust_mode = False
 
@@ -115,8 +138,9 @@ class Player:
         return (int(self.x), int(self.y))
 
     def update_logic_position(self):
-        self.col = int(self.x // GRID_SIZE)
-        self.row = int(self.y // GRID_SIZE)
+        # 反推邏輯座標時，要減去 OFFSET
+        self.col = int((self.x - OFFSET_X) // GRID_SIZE)
+        self.row = int((self.y - OFFSET_Y) // GRID_SIZE)
 
 # ----------------- 建地圖 -----------------
 grid = [[Tile(c, r) for r in range(ROWS)] for c in range(COLS)]
@@ -127,8 +151,8 @@ grid[0][4].mirror = Mirror(45)
 
 player = Player(1, 1)
 
-# 雷射來源
-laser_source = (GRID_SIZE//2, GRID_SIZE//2)
+# 雷射來源：修正為相對 Grid 的位置 + Offset
+laser_source = (OFFSET_X + GRID_SIZE//2, OFFSET_Y + GRID_SIZE//2)
 laser_direction = (1.0, 0.3)
 
 # 終點格
@@ -142,13 +166,23 @@ def draw_laser_emitter():
     screen.blit(laser_emitter_img, (lx - w // 2, ly - h // 2))
 
 def draw_grid():
+    # 畫個外框幫助除錯，確認格子有沒有對齊背景
+    board_rect = pg.Rect(OFFSET_X, OFFSET_Y, COLS*GRID_SIZE, ROWS*GRID_SIZE)
+    pg.draw.rect(screen, BLACK, board_rect, 3) 
     for c in range(COLS):
         for r in range(ROWS):
             t = grid[c][r]
-            pg.draw.rect(screen, WHITE, t.rect)
+
+            # ❌ 移除實心白色方塊
+            # pg.draw.rect(screen, WHITE, t.rect)
+
+            # （可選）可放置區塊用半透明顏色顯示
             if t.can_place:
-                pg.draw.rect(screen, (235, 245, 255), t.rect)
+                pass  # 什麼都不畫，背景自然透出
+
+            # ✅ 只畫格線（邊框）
             pg.draw.rect(screen, GRAY, t.rect, 1)
+
 
 def draw_shadow_mirrors(last_mirrors):
     if not last_mirrors:
@@ -162,8 +196,7 @@ def draw_shadow_mirrors(last_mirrors):
             if img:
                 shadow_img = img.copy()
                 shadow_img.set_alpha(80) 
-                draw_pos = (t.col * GRID_SIZE, t.row * GRID_SIZE)
-                s.blit(shadow_img, draw_pos)
+                s.blit(shadow_img, t.rect.topleft) # 使用 rect.topleft 自動包含 offset
             else:
                 # 圖片載入失敗時的回退
                 m = Mirror(ang)
@@ -203,7 +236,7 @@ def draw_tiles_contents():
                     pg.draw.line(screen, BLACK, p1, p2, 6)
                     pg.draw.line(screen, YELLOW, p1, p2, 2)
 
-    pg.draw.rect(screen, GREEN, goal_tile.rect)
+    pg.draw.rect(screen, GREEN, goal_tile.rect,4)
 
 def draw_player():
     x, y = player.pos
@@ -250,8 +283,8 @@ def reflect_vector(vx, vy, x1, y1, x2, y2):
 
 def fire_laser_and_get_path():
     path = []
-    max_steps = 3000
-    step_size = 4.0
+    max_steps = 6000
+    step_size = 5.0
 
     x, y = float(laser_source[0]), float(laser_source[1])
     vx, vy = laser_direction
@@ -262,6 +295,9 @@ def fire_laser_and_get_path():
 
     reflections = 0
     reached_goal = False
+
+    # 優化邊界檢查 (只在畫面內運算)
+    screen_rect = pg.Rect(0, 0, WIDTH, HEIGHT)
 
     for _ in range(max_steps):
         x += vx
@@ -275,8 +311,9 @@ def fire_laser_and_get_path():
         if x < 0 or x > WIDTH or y < 0 or y > HEIGHT:
             break
 
-        c = int(x // GRID_SIZE)
-        r = int(y // GRID_SIZE)
+        # 座標轉 Grid
+        c = int((x - OFFSET_X) // GRID_SIZE)
+        r = int((y - OFFSET_Y) // GRID_SIZE)
         hit = False
         
         # 檢查周圍九宮格的鏡子
@@ -291,17 +328,17 @@ def fire_laser_and_get_path():
                         p1, p2 = t.mirror.endpoints(t.center)
                         
                         # 判斷雷射是否靠近這條線段（碰撞檢測）
-                        if point_near_line((x, y), p1, p2, 6):
+                        if point_near_line((x, y), p1, p2, 8):
                             # 使用 reflect_vector 函式計算反射
                             vx, vy = reflect_vector(vx, vy, *p1, *p2)
                             
                             reflections += 1
-                            if reflections > 30:
+                            if reflections > 40:
                                 return path, reached_goal
                             
                             # 稍微移動雷射，防止立即再次碰撞
-                            x += vx*0.5
-                            y += vy*0.5
+                            x += vx*0.6
+                            y += vy*0.6
                             path.append((x, y))
                             hit = True
                             break
@@ -316,7 +353,10 @@ def draw_laser_path(path):
     pg.draw.lines(screen, RED, False, path, 5)
     draw_laser_emitter()
 
-def tile_at(c, r):
+def tile_at_pixel(px, py):
+    # 將像素座標轉換為網格座標
+    c = int((px - OFFSET_X) // GRID_SIZE)
+    r = int((py - OFFSET_Y) // GRID_SIZE)
     if 0 <= c < COLS and 0 <= r < ROWS:
         return grid[c][r]
     return None
@@ -365,7 +405,7 @@ while running:
 
             # -------- E 互動（撿/放/調整）--------
             if event.key == pg.K_e:
-                t = tile_at(player.col, player.row)
+                t = tile_at_pixel(player.x, player.y) # 使用修正後的查找函數
                 if player.adjust_mode:
                     if t and t.can_place and t.mirror is None and player.holding:
                         t.mirror = player.holding
@@ -423,15 +463,21 @@ while running:
             player.x += dx * PLAYER_SPEED * (dt / 1000)
             player.y += dy * PLAYER_SPEED * (dt / 1000)
 
-            # 限制邊界
-            player.x = max(GRID_SIZE//2, min(WIDTH - GRID_SIZE//2, player.x))
-            player.y = max(GRID_SIZE//2, min(HEIGHT - GRID_SIZE//2, player.y))
+            # 限制玩家移動範圍 (加上 OFFSET)
+            min_x = OFFSET_X + GRID_SIZE//2
+            max_x = OFFSET_X + COLS*GRID_SIZE - GRID_SIZE//2
+            min_y = OFFSET_Y + GRID_SIZE//2
+            max_y = OFFSET_Y + ROWS*GRID_SIZE - GRID_SIZE//2
+            
+            player.x = max(min_x, min(max_x, player.x))
+            player.y = max(min_y, min(max_y, player.y))
 
             # 更新邏輯格
             player.update_logic_position()
 
     # ================== 畫畫面 ==================
-    screen.fill(WHITE)
+    screen.fill(BLACK)
+    screen.blit(bg_img, (0, 0))
     draw_grid()
     draw_shadow_laser(last_laser_path)
     draw_shadow_mirrors(last_mirrors)
@@ -439,7 +485,7 @@ while running:
     draw_player()
 
     # 互動提示
-    cur_tile = tile_at(player.col, player.row)
+    cur_tile = tile_at_pixel(player.x, player.y)
     if cur_tile and cur_tile.mirror:
         screen.blit(font.render("按E撿起鏡子", True, BLACK), (30, 30))
     elif player.holding and cur_tile and cur_tile.can_place and cur_tile.mirror is None and not player.adjust_mode:
@@ -470,7 +516,7 @@ while running:
         mag = math.hypot(vx, vy)
         if mag != 0:
             nx, ny = vx/mag, vy/mag
-            tip_len = 30
+            tip_len = 40
             end_pos = (lx + nx*tip_len, ly + ny*tip_len)
             pg.draw.line(screen, (180,60,60), laser_source, end_pos, 4)
 
