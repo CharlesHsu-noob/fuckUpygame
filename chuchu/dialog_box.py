@@ -49,11 +49,11 @@ DIALOGUES = {
 
     # --- 湖泊 ---
     "lake_intro": [
-        {"type": "text", "content": "一個生機蓬勃的湖泊。"},
+        {"type": "text", "content": "一個生機蓬勃的湖泊"},
         {"type": "jump", "next": "lake_menu"} 
     ],
     "lake_intro_unlock": [
-        {"type": "text", "content": "一個生機蓬勃的湖泊。(已解鎖搭船)"},
+        {"type": "text", "content": "一個生機蓬勃的湖泊"},
         {"type": "jump", "next": "lake_menu_unlock"} 
     ],
     
@@ -80,16 +80,16 @@ DIALOGUES = {
     "boat": [{"type": "end"}],
 
     "no_rod": [
-        {"type": "text", "content": "你發現你沒有釣竿。"},
+        {"type": "text", "content": "你發現你沒有釣竿"},
         {"type": "jump", "next": "lake_menu"} 
     ],
     "no_rod_unlock": [
-        {"type": "text", "content": "你沒有釣竿，只能看著魚發呆。"},
+        {"type": "text", "content": "你沒有釣竿 只能看著魚發呆"},
         {"type": "jump", "next": "lake_menu_unlock"} 
     ],
 
     "exit_prompt": [
-        {"type": "text", "content": "於是你轉身向山裡走去。"},
+        {"type": "text", "content": "於是你轉身向山裡走去"},
         {"type": "end"}
     ],
 
@@ -185,7 +185,7 @@ DIALOGUES = {
     "cat": [
         {"type": "text", "content": "不對...墨星!"},
         {"type": "text", "content": "難怪那麼安靜 牠一定又跑出去了"},
-        {"type": "text", "content": "我該出去找牠"},
+        {"type": "text", "content": "我要出去找牠!"},
         {"type": "end"}
     ],
     "go_out": [
@@ -194,7 +194,7 @@ DIALOGUES = {
         {"type": "end"}
     ],
     "locked_door": [
-         {"type": "text", "content": "(現在還不能出門，得先確認家裡的情況...)"},
+         {"type": "text", "content": "(現在還不能出門 得先確認家裡的情況...)"},
          {"type": "end"}
     ]
 }
@@ -269,11 +269,12 @@ class DialogueSystem:
             self.screen.blit(bg_snap, (0, 0))
             box = self._draw_box()
             
-            hint_str = "[Z] 關閉"
+            hint_str = "[X] 關閉"
             if cur["type"] == "text" and char_index >= len(target_text):
-                hint_str += "  [Enter] 繼續"
+                hint_str += "  [Z] 繼續"
             elif cur["type"] == "choice":
-                hint_str += "  [↑↓] 選擇  [Enter] 確定"
+                hint_str += "  [↑↓] 選擇  [Z] 確定"
+            
                 
             hint_render = self.small_font.render(hint_str, True, (150, 150, 150))
             self.screen.blit(hint_render, (box.right - 220, box.bottom - 25))
@@ -307,13 +308,13 @@ class DialogueSystem:
                 if event.type == pg.QUIT: pg.quit(); sys.exit()
                 
                 if event.type == pg.KEYDOWN:
-                    if event.key == pg.K_z:
+                    if event.key == pg.K_x:  #c
                         running_dialogue = False
                         current_key = None
                         break
 
                     if cur["type"] == "text":
-                        if event.key == pg.K_RETURN:
+                        if event.key == pg.K_z: #c
                             if char_index < len(target_text):
                                 char_index = len(target_text)
                                 displayed_text = target_text
@@ -326,7 +327,7 @@ class DialogueSystem:
                             option_index = (option_index - 1) % len(cur["options"])
                         if event.key == pg.K_DOWN:
                             option_index = (option_index + 1) % len(cur["options"])
-                        if event.key == pg.K_RETURN:
+                        if event.key == pg.K_z: #c
                             selected = cur["options"][option_index]
                             if "next" in selected:
                                 current_key = selected["next"]
@@ -398,7 +399,7 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT: running = False
             
-            if event.type == pg.KEYDOWN and event.key == pg.K_e:
+            if event.type == pg.KEYDOWN and event.key == pg.K_z: #c
                 if scene == "HOME":
                     for item_name in ["document", "wire", "coat", "crayon"]:
                         if player.rect.colliderect(home_triggers[item_name]):
@@ -477,7 +478,7 @@ def main():
         triggers = home_triggers if scene == "HOME" else world_triggers
         for rect in triggers.values():
             if player.rect.colliderect(rect):
-                hint = small_font.render("E", True, (255, 255, 255))
+                hint = small_font.render("Z", True, (255, 255, 255))
                 screen.blit(hint, (player.rect.centerx - 5, player.rect.top - 25))
 
         pg.display.flip()
