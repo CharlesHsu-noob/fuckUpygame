@@ -150,7 +150,7 @@ DIALOGUES = {
             "type": "choice",
             "options": [
                 {"text": "你是誰", "next": "who_are_you"}, 
-                {"text": "為甚麼有人會想在這種地方開店阿", "next": "why_here"},
+                {"text": "為什麼有人會想在這種地方開店阿", "next": "why_here"},
                 {"text": "返回", "next": "store"}
             ]
         }
