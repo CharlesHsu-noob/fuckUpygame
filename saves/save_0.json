@@ -1,9 +1,9 @@
 {
     "chapter": 1,
     "money": 100,
-    "playtime": 40.11768317222595,
+    "playtime": 39.32113075256348,
     "volume": 0.5,
-    "sfx_volume": 0.51,
+    "sfx_volume": 0.5,
     "party_data": [
         {
             "name": "U",
@@ -36,25 +36,6 @@
             "max_hp": 120
         }
     ],
-    "upgrade_log": [
-        {
-            "timestamp": "2025-12-23 21:24:21",
-            "char_name": "U",
-            "source": "\u80fd\u91cf\u98f2\u6599",
-            "effect": "ENG +3"
-        },
-        {
-            "timestamp": "2025-12-23 21:24:25",
-            "char_name": "\u6cd5\u5e2b",
-            "source": "\u80fd\u91cf\u98f2\u6599",
-            "effect": "ENG +3"
-        },
-        {
-            "timestamp": "2025-12-23 21:24:27",
-            "char_name": "U",
-            "source": "Rune: Berkano",
-            "effect": "HP UP"
-        }
-    ],
-    "timestamp": "12/23 21:24"
+    "upgrade_log": [],
+    "timestamp": "12/25 18:36"
 }
