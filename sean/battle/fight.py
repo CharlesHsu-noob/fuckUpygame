@@ -5,11 +5,12 @@ import os
 from QTE_MLBmode import play_qte 
 from QTE_DBDmode import play_dbd_qte 
 
+# ==========================================
+# ★★★ 【初始化與全螢幕設定】 ★★★
+# ==========================================
 pygame.init()
+pygame.mixer.init() 
 
-# ==========================================
-# ★★★ 【全螢幕設定】 ★★★
-# ==========================================
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 WIDTH, HEIGHT = screen.get_size()
 
@@ -17,17 +18,18 @@ pygame.display.set_caption("Fight Prototype")
 clock = pygame.time.Clock()
 
 # ==========================================
-# ★★★ 【參數設定區 (已繼承你的數值)】 ★★★
+# ★★★ 【參數設定區】 ★★★
 # ==========================================
 
-# 敵人設定 (使用你提供的數值)
+# 敵人設定
 SNAKE_CONFIG = {"hp": 80, "scale": 0.38, "pos_x": 0.25, "pos_y": 0.55}
-OWL_CONFIG = {"hp": 60, "scale": 0.40, "pos_x": 0.5, "pos_y": 0.45}
-FOX_CONFIG = {"hp": 100, "scale": 0.28, "pos_x": 0.75, "pos_y": 0.45}
+OWL_CONFIG   = {"hp": 60, "scale": 0.40, "pos_x": 0.5, "pos_y": 0.45}
+FOX_CONFIG   = {"hp": 100, "scale": 0.28, "pos_x": 0.75, "pos_y": 0.45}
+
 BASE_ENEMY_DMG = 8
 HP_BAR_OFFSET_Y = -20
 
-# ★★★ Select 圖示位置調整變數 (已繼承) ★★★
+# Select 圖示位置調整變數
 SELECT_OFFSET_X = 0
 SELECT_OFFSET_Y = 230 
 
@@ -42,16 +44,35 @@ def load_img(sub_path, alpha=True):
         return pygame.image.load(path).convert_alpha() if alpha else pygame.image.load(path).convert()
     return None
 
+# ★★★ 新增：音效載入函式 ★★★
+def load_sfx(filename):
+    path = os.path.join(current_path, "voice", filename)
+    if os.path.exists(path):
+        return pygame.mixer.Sound(path)
+    return None
+
+# BGM 載入
+bgm_path = os.path.join(current_path, "voice", "battle.ogg")
+try:
+    if os.path.exists(bgm_path):
+        pygame.mixer.music.load(bgm_path)
+        pygame.mixer.music.set_volume(0.5) 
+        pygame.mixer.music.play(-1)       
+        print(f"BGM Loaded: {bgm_path}")
+    else:
+        print(f"Warning: BGM not found at {bgm_path}")
+except Exception as e:
+    print(f"Error loading BGM: {e}")
+
 bg_raw = load_img("photo/forest_battle.png", False)
 bg_img = pygame.transform.scale(bg_raw, (int(WIDTH * 1.05), int(HEIGHT * 1.05))) if bg_raw else pygame.Surface((WIDTH, HEIGHT))
 bite_raw = load_img("photo/bite.png")
 def_icon_raw = load_img("photo/def_up.png")
 
-# 選怪游標 (select.png)
+# 選怪游標
 select_raw = load_img("photo/select.png")
 select_img = None
 if select_raw:
-    # 使用你設定的大小：螢幕高度的 20%
     s_h = int(HEIGHT * 0.2)
     s_w = int(select_raw.get_width() * (s_h / select_raw.get_height()))
     select_img = pygame.transform.scale(select_raw, (s_w, s_h))
@@ -77,6 +98,11 @@ class Enemy:
         self.buffer_hp = self.max_hp
         self.buffer_timer = 0
         
+        # ★★★ 新增：載入個別音效 (Attack & Damage) ★★★
+        # name.lower() 會把 "Snake" 變成 "snake"，對應檔名 snake_a.ogg / snake_d.ogg
+        self.snd_attack = load_sfx(f"{name.lower()}_a.ogg")
+        self.snd_damage = load_sfx(f"{name.lower()}_d.ogg")
+
         raw = load_img(f"photo/{img_name}")
         if raw:
             h = int(HEIGHT * config["scale"])
@@ -93,8 +119,14 @@ class Enemy:
 
     def take_damage(self, amount):
         if self.is_dead: return
+        
         self.hp = max(0, self.hp - amount)
         self.buffer_timer = 0.5 
+        
+        # ★★★ 新增：播放受擊音效 ★★★
+        if self.snd_damage:
+            self.snd_damage.play()
+
         if self.hp <= 0: self.is_dead = True
 
     def update(self, dt):
@@ -178,10 +210,9 @@ energy_cost = [3, 5, 4, 0]; selected_option = None
 energy_recover_queue = []; energy_recover_timer = [0] * MAX_ENERGY
 shield_turns = 0; recover_timer = 0; ENERGY_DELAY = 0.1; pending_energy_recover = 0 
 
-# ★★★ 攻擊隊列變數 (取代原本的一次性攻擊) ★★★
-enemy_turn_active = False   # 敵人回合是否正在進行
-enemy_attack_queue = []     # 待執行的攻擊 (每個元素是傷害值)
-enemy_action_timer = 0      # 攻擊間隔計時器
+enemy_turn_active = False   
+enemy_attack_queue = []     
+enemy_action_timer = 0      
 
 bite_anim = {"active": False, "timer": 0}
 confetti_particles = []
@@ -211,8 +242,6 @@ def reset_game():
     player_buffer_hp = PLAYER_HP; player_buffer_timer = 0
     shield_turns = 0; game_over = False; victory = False
     selected_option = None
-    
-    # 重置攻擊隊列
     enemy_turn_active = False; enemy_attack_queue = []
     
     bite_anim = {"active": False, "timer": 0}; energy_recover_queue = []
@@ -239,12 +268,9 @@ def draw_scene(dt, is_background=False):
         enemy.update(dt)
         enemy.draw(screen, shake_x, shake_y)
 
-    # ★★★ 繪製選怪游標 (使用你的 SELECT_OFFSET_X / Y) ★★★
     if selecting_target and select_img and not (game_over or victory):
         float_y = math.sin(pygame.time.get_ticks() * 0.01) * 10
-        
         def draw_cursor_on(target):
-            # 這裡套用了你要求的偏移量 SELECT_OFFSET_Y = 230
             cx = target.rect.centerx - select_img.get_width() // 2 + shake_x + SELECT_OFFSET_X
             cy = target.rect.top - select_img.get_height() + float_y + shake_y + SELECT_OFFSET_Y
             screen.blit(select_img, (cx, cy))
@@ -252,13 +278,10 @@ def draw_scene(dt, is_background=False):
         if target_skill == 0:
             if 0 <= current_target_idx < len(enemies):
                 target = enemies[current_target_idx]
-                if not target.is_dead:
-                    draw_cursor_on(target)
-
+                if not target.is_dead: draw_cursor_on(target)
         elif target_skill == 1:
             for enemy in enemies:
-                if not enemy.is_dead:
-                    draw_cursor_on(enemy)
+                if not enemy.is_dead: draw_cursor_on(enemy)
 
     impact_alpha = 0
     if impact_state["active"]:
@@ -305,25 +328,23 @@ def draw_scene(dt, is_background=False):
         if energy_recover_timer[i] > 0: energy_recover_timer[i] = max(0, energy_recover_timer[i] - dt)
 
     if not is_background:
-        # ★★★ 新增：敵人回合的攻擊邏輯 (一下一下打) ★★★
         if enemy_turn_active and not victory and not game_over:
             enemy_action_timer += dt
-            # 每隔 0.8 秒觸發一次攻擊
             if enemy_action_timer >= 0.8:
                 enemy_action_timer = 0
                 if enemy_attack_queue:
-                    # 取出一個傷害值
-                    dmg = enemy_attack_queue.pop(0)
+                    # ★★★ 修改：取出傷害值與攻擊者，播放該攻擊者的音效 ★★★
+                    dmg, attacker = enemy_attack_queue.pop(0)
                     
-                    # 觸發動畫與扣血
+                    if attacker.snd_attack:
+                        attacker.snd_attack.play()
+                        
                     trigger_bite()
                     trigger_impact(2) 
                     PLAYER_HP = max(0, PLAYER_HP - dmg)
                     player_buffer_timer = BUFFER_DELAY 
-                    
                     if PLAYER_HP <= 0: game_over = True
                 else:
-                    # 隊列清空，回合結束，開始回能
                     enemy_turn_active = False
                     pending_energy_recover = 4 
 
@@ -343,10 +364,7 @@ def draw_scene(dt, is_background=False):
         col, row = i % 2, i // 2
         cx, cy = sx + (col * g_x), sy + (row * g_y)
         is_highlighted = (selected_option == i and not selecting_target) or (selecting_target and target_skill == i)
-        
-        # 敵人攻擊時，隱藏選單 Highlight
         if enemy_turn_active: is_highlighted = False
-        
         color = (200, 0, 0) if (is_highlighted and player_energy < energy_cost[i]) else OPT_COLOR
         
         text = option_font.render(f"{i+1}. {option}", True, color)
@@ -428,9 +446,7 @@ while running:
                 if event.key == pygame.K_r: reset_game() 
             continue 
         
-        # 敵人回合正在進行時，鎖住操作
-        if enemy_turn_active:
-            continue
+        if enemy_turn_active: continue
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE: 
@@ -465,7 +481,6 @@ while running:
                             for e in enemies:
                                 if not e.is_dead: e.take_damage(dmg)
                             if check_victory(): victory = True
-
                         selecting_target = False; target_skill = None; selected_option = None
             else:
                 if event.key in (pygame.K_1, pygame.K_KP1): selected_option = 0
@@ -497,28 +512,23 @@ while running:
                     elif selected_option == 2: 
                         if player_energy >= energy_cost[2]:
                             player_energy -= energy_cost[2]; shield_turns = 3; selected_option = None
-                    elif selected_option == 3: # End Round -> 觸發隊列式攻擊
-                        # 1. 計算防禦係數
+                    elif selected_option == 3:
                         defense_factor = 1.0
                         if shield_turns > 0:
                             results = play_dbd_qte(screen, WIDTH, HEIGHT, draw_bg_func=lambda d: draw_scene(d, is_background=True))
                             clock.tick(60); perf = results.count("PERFECT")
                             defense_factor = 1.0 - (0.2 * perf) 
                             shield_turns -= 1
-                        
-                        # 2. 建立攻擊隊列
                         enemy_attack_queue = []
                         for enemy in enemies:
                             if not enemy.is_dead:
                                 raw_dmg = BASE_ENEMY_DMG * random.uniform(0.8, 1.2)
                                 final_dmg = int(raw_dmg * defense_factor)
-                                enemy_attack_queue.append(final_dmg)
-                        
-                        # 3. 啟動回合
+                                # ★★★ 修改：將傷害與攻擊者(Enemy物件)一起存入佇列 ★★★
+                                enemy_attack_queue.append((final_dmg, enemy))
                         if enemy_attack_queue:
                             enemy_turn_active = True
                             enemy_action_timer = 0.5 
-                        
                         selected_option = None
 
     draw_scene(dt); pygame.display.flip()
