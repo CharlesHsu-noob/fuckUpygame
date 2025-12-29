@@ -1,8 +1,60 @@
 {
     "chapter": 1,
     "money": 100,
-    "playtime": 28.344034433364868,
-    "volume": 0.5,
-    "sfx_volume": 0.5,
-    "timestamp": "12/23 15:52"
+    "playtime": 30.838382482528687,
+    "volume": 0.44999999999999996,
+    "sfx_volume": 0.6400000000000001,
+    "party_data": [
+        {
+            "name": "U",
+            "desc": "\u5e73\u8861\u578b\u6230\u58eb",
+            "hp": 100,
+            "max_hp": 100
+        },
+        {
+            "name": "\u6cd5\u5e2b",
+            "desc": "\u9ad8\u8f38\u51fa\u55ae\u4f4d",
+            "hp": 45,
+            "max_hp": 60
+        },
+        {
+            "name": "\u76dc\u8cca",
+            "desc": "\u9ad8\u901f\u5ea6\u55ae\u4f4d",
+            "hp": 60,
+            "max_hp": 70
+        },
+        {
+            "name": "\u7267\u5e2b",
+            "desc": "\u652f\u63f4\u578b\u55ae\u4f4d",
+            "hp": 50,
+            "max_hp": 60
+        },
+        {
+            "name": "\u9a0e\u58eb",
+            "desc": "\u9632\u79a6\u578b\u55ae\u4f4d",
+            "hp": 110,
+            "max_hp": 120
+        }
+    ],
+    "upgrade_log": [
+        {
+            "timestamp": "2025-12-25 13:12:29",
+            "char_name": "U",
+            "source": "\u5805\u679c\u68d2",
+            "effect": "HP +20%"
+        },
+        {
+            "timestamp": "2025-12-25 13:12:31",
+            "char_name": "U",
+            "source": "\u80fd\u91cf\u98f2\u6599",
+            "effect": "ENG +3"
+        },
+        {
+            "timestamp": "2025-12-25 13:12:38",
+            "char_name": "\u76dc\u8cca",
+            "source": "Rune: Berkano",
+            "effect": "HP UP"
+        }
+    ],
+    "timestamp": "12/25 13:12"
 }

@@ -1,8 +1,8 @@
 {
     "chapter": 1,
     "money": 100,
-    "playtime": 39.32113075256348,
-    "volume": 0.5,
+    "playtime": 10.301268815994263,
+    "volume": 0.7000000000000002,
     "sfx_volume": 0.5,
     "party_data": [
         {
@@ -37,5 +37,5 @@
         }
     ],
     "upgrade_log": [],
-    "timestamp": "12/25 18:36"
+    "timestamp": "12/29 22:24"
 }
