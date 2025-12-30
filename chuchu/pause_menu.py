@@ -356,7 +356,7 @@ def draw_page2(surf):
         photo_rect = pg.Rect(0, 0, r.width - s_x(10), photo_h)
         photo_rect.center = (r.centerx, r.centery - s_y(5))
         
-        # === 修改重點：只針對 U 載入圖片，其他人空白 ===
+        # === 載入圖片 ===
         if d['name'] == "U":
             try:
                 # 組成路徑：base_dir/picture/chuchutest/u_stand.png
@@ -377,7 +377,7 @@ def draw_page2(surf):
             # 其他角色 (K, W, C, O) 什麼都不畫，保持空白
             pass
 
-        # 3. 血條 (橫向，底部)
+        # 3. 血條
         hp_ratio = d["hp"] / d["max_hp"]
         bar_w = r.width - s_x(12)
         bar_h = s_y(12)
