@@ -125,7 +125,6 @@ DIALOGUES = {
             "options": [
                 {"text": "購物", "next": "buy_menu"}, 
                 {"text": "對話", "next": "busnessman_talk"},
-                {"text": "離開", "next": "end"}
             ]
         }
     ],
@@ -171,16 +170,16 @@ DIALOGUES = {
         {"type": "end"}
     ],
     "document": [{"type": "text", "content": "(一疊被打亂的文件)"}, {"type": "end"}],
-    "document_last": [{"type": "text", "content": "我真該在放墨星進來之前把資料收好..."}, {"type": "jump", "next": "cat"}],
+    "document_last": [{"type": "text", "content": "我真該在放墨星進來之前把資料收好..."}, {"type": "end"}],
     
     "wire": [{"type": "text", "content": "(一條充滿咬痕的吉他導線)"}, {"type": "end"}],
-    "wire_last": [{"type": "text", "content": "這大概是墨星咬壞的第800條導線了..."}, {"type": "jump", "next": "cat"}],
+    "wire_last": [{"type": "text", "content": "這大概是墨星咬壞的第800條導線了..."}, {"type": "end"}],
     
     "coat": [{"type": "text", "content": "(被丟在地上的大衣)"}, {"type": "end"}],
-    "coat_last": [{"type": "text", "content": "明明已經買貓窩給牠了 墨星還是喜歡睡在外套上..."}, {"type": "jump", "next": "cat"}],
+    "coat_last": [{"type": "text", "content": "明明已經買貓窩給牠了 墨星還是喜歡睡在外套上..."}, {"type": "end"}],
     
     "crayon": [{"type": "text", "content": "(昨天畫完畫忘記收起來的蠟筆)"}, {"type": "end"}],
-    "crayon_last": [{"type": "text", "content": "幸好墨星沒有把這當食物..."}, {"type": "jump", "next": "cat"}],
+    "crayon_last": [{"type": "text", "content": "幸好墨星沒有把這當食物..."}, {"type": "end"}],
 
     "cat": [
         {"type": "text", "content": "不對...墨星!"},
@@ -405,7 +404,9 @@ def main():
                         if player.rect.colliderect(home_triggers[item_name]):
                             investigated_items.add(item_name)
                             if len(investigated_items) == 4:
+                                dlg_sys.show(f"{item_name}")
                                 dlg_sys.show(f"{item_name}_last")
+                                dlg_sys.show(f"cat")
                                 can_leave_home = True
                             else:
                                 dlg_sys.show(item_name)
@@ -419,13 +420,53 @@ def main():
 
                 elif scene == "WORLD":
                     if player.rect.colliderect(world_triggers["shop"]):
-                        shop_res = dlg_sys.show("store")
-                        if shop_res == "buy_nut" and money >= 3:
-                            money -= 3; inventory.append("堅果棒")
-                        elif shop_res == "buy_drink" and money >= 3:
-                            money -= 3; inventory.append("飲料")
-                        elif shop_res == "buy_rune" and money >= 5:
-                            money -= 5; inventory.append("空白符文")
+                        # 1. 設定初始進入點
+                        current_shop_key = "store" 
+                        in_shop_loop = True  # 控制是否還在商店裡的開關
+
+                        # 2. 進入商店專用的 "死迴圈"
+                        while in_shop_loop:
+                            # 呼叫對話框，程式會停在這裡等待玩家選完或按X
+                            # result 會接收到玩家最後停在哪個對話節點 (例如 "buy_nut" 或 "store")
+                            result = dlg_sys.show(current_shop_key)
+
+                            # === 情況 A: 玩家按了 X (取消/關閉) ===
+                            if result is None:
+                                in_shop_loop = False # 跳出迴圈，回到走路模式
+
+                            # === 情況 B: 玩家選了購買項目 (需要處理邏輯) ===
+                            elif result == "buy_nut":
+                                if money >= 3:
+                                    money -= 3
+                                    inventory[ID_NUT] += 1  # 數量加 1
+                                    current_shop_key = "buy_success"
+                                else:
+                                    current_shop_key = "buy_fail"
+
+                            elif result == "buy_drink":
+                                if money >= 3:
+                                    money -= 3
+                                    inventory[ID_DRINK] += 1 # 數量加 1
+                                    current_shop_key = "buy_success"
+                                else:
+                                    current_shop_key = "buy_fail"
+
+                            elif result == "buy_rune":
+                                if money >= 5:
+                                    money -= 5
+                                    inventory[ID_RUNE] += 1  # 數量加 1
+                                    current_shop_key = "buy_success"
+                                else:
+                                    current_shop_key = "buy_fail"
+
+                            # === 情況 C: 單純的頁面跳轉 (例如從主頁進購買頁，或進聊天) ===
+                            else:
+                                # 如果 result 是 "end" (通常發生在純對話結束)，讓它回到商店主頁
+                                if result == "end":
+                                    current_shop_key = "store"
+                                # 否則，直接把下一次要開的對話設為這次回傳的 key (實現選單跳轉)
+                                else:
+                                    current_shop_key = result
 
                     elif player.rect.colliderect(world_triggers["dock"]):
                         res = dlg_sys.show("dock")

@@ -215,24 +215,51 @@ def handle_global_input(events):
 def handle_input_page1(event):
     global nav_cursor, paused, save_msg, save_msg_timer, active_slot_index, fading_out, is_flipping, ui_interactive, fade_alpha
     col, row = nav_cursor
+    
+    # === 上下鍵邏輯 (修改：切斷存檔與讀檔的上下連結) ===
     if event.key == pg.K_UP:
-        row -= 1; 
-        if col == 1 and (row == 3 or row == 4): row = 2 
-        nav_cursor[1] = max(0, row)
-    elif event.key == pg.K_DOWN: max_row = 3 if col == 0 else 4; nav_cursor[1] = min(row + 1, max_row)
+        if col == 1 and row >= 3: 
+            # 如果在「存檔(3)」或「讀檔(4)」，按上都直接跳回 Slot 3 (2)
+            # 這樣視覺上比較自然，且不會讓讀檔誤觸存檔
+            nav_cursor[1] = 2
+        else:
+            nav_cursor[1] = max(0, row - 1)
+
+    elif event.key == pg.K_DOWN:
+        # 左側選單 max=3, 右側選單現在 max 也限制為 3 (只到存檔)
+        # 這樣在「存檔」按「下」時，不會跳到「讀檔」
+        max_row = 3 
+        
+        # 只有當目前還沒到底部時才移動 (如果在 Row 4 讀檔，按下也不動)
+        if row < max_row:
+            nav_cursor[1] = row + 1
+
+    # === 左鍵邏輯 (維持：讀檔 -> 存檔) ===
     elif event.key == pg.K_LEFT:
-        if col == 0: 
+        if col == 1:
+            if row == 4: # 如果在「讀檔」
+                nav_cursor[1] = 3 # 往左回到「存檔」
+            else:
+                if row == 3: row = 3 
+                nav_cursor = [0, min(row, 3)]
+        else:
             if row == 1: slider_music.change_value(-0.01)
             elif row == 2: slider_sfx.change_value(-0.01)
-        else: 
-            if row == 4: row = 3
-            nav_cursor = [0, min(row, 3)]
+
+    # === 右鍵邏輯 (維持：存檔 -> 讀檔) ===
     elif event.key == pg.K_RIGHT:
         if col == 0: 
             if row == 1: slider_music.change_value(0.01)
             elif row == 2: slider_sfx.change_value(0.01)
             else: nav_cursor = [1, row] 
-        else: fading_out, is_flipping, ui_interactive, fade_alpha = True, True, False, 255
+        else: 
+            if row == 3: # 如果在「存檔」
+                nav_cursor[1] = 4 # 往右移到「讀檔」
+            else:
+                # 其他情況 (包含在「讀檔」按鈕時) 才翻頁
+                fading_out, is_flipping, ui_interactive, fade_alpha = True, True, False, 255
+
+    # === 確認鍵邏輯 (不變) ===
     elif event.key in (pg.K_RETURN, pg.K_SPACE, pg.K_z):
         if col == 0:
             if row == 0: paused = False

@@ -1,41 +1,102 @@
 {
     "chapter": 1,
     "money": 100,
-    "playtime": 10.301268815994263,
-    "volume": 0.7000000000000002,
+    "playtime": 24.401553630828857,
+    "volume": 0.5,
     "sfx_volume": 0.5,
     "party_data": [
         {
             "name": "U",
-            "desc": "\u5e73\u8861\u578b\u6230\u58eb",
+            "desc": "\u5167\u5411 \u4e0d\u64c5\u4ea4\u6d41",
             "hp": 80,
             "max_hp": 100
         },
         {
-            "name": "\u6cd5\u5e2b",
-            "desc": "\u9ad8\u8f38\u51fa\u55ae\u4f4d",
+            "name": "K",
+            "desc": "???",
             "hp": 45,
             "max_hp": 60
         },
         {
-            "name": "\u76dc\u8cca",
-            "desc": "\u9ad8\u901f\u5ea6\u55ae\u4f4d",
+            "name": "W",
+            "desc": "???",
             "hp": 60,
             "max_hp": 70
         },
         {
-            "name": "\u7267\u5e2b",
-            "desc": "\u652f\u63f4\u578b\u55ae\u4f4d",
+            "name": "C",
+            "desc": "???",
             "hp": 50,
             "max_hp": 60
         },
         {
-            "name": "\u9a0e\u58eb",
-            "desc": "\u9632\u79a6\u578b\u55ae\u4f4d",
+            "name": "O",
+            "desc": "???",
             "hp": 110,
             "max_hp": 120
         }
     ],
-    "upgrade_log": [],
-    "timestamp": "12/29 22:24"
+    "upgrade_log": [
+        {
+            "timestamp": "2025-12-31 00:13:01",
+            "char": "U",
+            "source": "\u80fd\u91cf\u98f2\u6599",
+            "effect": "ENG +3"
+        },
+        {
+            "timestamp": "2025-12-31 00:13:01",
+            "char": "U",
+            "source": "\u80fd\u91cf\u98f2\u6599",
+            "effect": "ENG +3"
+        },
+        {
+            "timestamp": "2025-12-31 00:13:02",
+            "char": "U",
+            "source": "\u80fd\u91cf\u98f2\u6599",
+            "effect": "ENG +3"
+        },
+        {
+            "timestamp": "2025-12-31 00:13:03",
+            "char": "U",
+            "source": "\u80fd\u91cf\u98f2\u6599",
+            "effect": "ENG +3"
+        },
+        {
+            "timestamp": "2025-12-31 00:13:04",
+            "char": "U",
+            "source": "\u80fd\u91cf\u98f2\u6599",
+            "effect": "ENG +3"
+        },
+        {
+            "timestamp": "2025-12-31 00:13:06",
+            "char": "U",
+            "source": "Rune: Berkano",
+            "effect": "HP UP"
+        },
+        {
+            "timestamp": "2025-12-31 00:13:07",
+            "char": "U",
+            "source": "Rune: Berkano",
+            "effect": "HP UP"
+        },
+        {
+            "timestamp": "2025-12-31 00:13:08",
+            "char": "U",
+            "source": "Rune: Berkano",
+            "effect": "HP UP"
+        },
+        {
+            "timestamp": "2025-12-31 00:13:09",
+            "char": "U",
+            "source": "Rune: Berkano",
+            "effect": "HP UP"
+        },
+        {
+            "timestamp": "2025-12-31 00:13:10",
+            "char": "U",
+            "source": "Rune: Berkano",
+            "effect": "HP UP"
+        }
+    ],
+    "timestamp": "12/31 00:13"
 }
