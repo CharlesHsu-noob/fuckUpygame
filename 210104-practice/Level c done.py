@@ -42,6 +42,19 @@ except:
     bg_img = pg.Surface((WIDTH, HEIGHT))
     bg_img.fill(WHITE)
 
+# --- 障礙物提示圖片 ---
+try:
+    obstacle_img_raw = pg.image.load(
+        os.path.join('picture', 'lab_crystal.png')
+    ).convert_alpha()
+except:
+    obstacle_img_raw = None
+crystal_tile_img = None
+if obstacle_img_raw:
+    crystal_tile_img = pg.transform.scale(obstacle_img_raw, (GRID_SIZE, GRID_SIZE))
+
+
+
 # --- 雷射發射器圖片 ---
 try:
     laser_emitter1_img = pg.image.load(os.path.join('picture', 'lab_laser_top.png')).convert_alpha()
@@ -77,6 +90,28 @@ try:
     }
 except:
     pass
+
+# --- 終點圖片 ---
+try:
+    goal_img_raw = pg.image.load(os.path.join('picture', 'lab_detector.png')).convert_alpha()
+    try:
+        content_rect = goal_img_raw.get_bounding_rect(min_alpha=1)
+        goal_img_cropped = goal_img_raw.subsurface(content_rect).copy()
+    except:
+        goal_img_cropped = goal_img_raw
+    goal_img = pg.transform.smoothscale(goal_img_cropped, (GRID_SIZE, GRID_SIZE))
+except:
+    goal_img = None
+try:
+    goal_pass_raw = pg.image.load(os.path.join('picture', 'lab_detector_pass.png')).convert_alpha()
+    try:
+        content_rect2 = goal_pass_raw.get_bounding_rect(min_alpha=1)
+        goal_pass_cropped = goal_pass_raw.subsurface(content_rect2).copy()
+    except:
+        goal_pass_cropped = goal_pass_raw
+    goal_img_pass = pg.transform.smoothscale(goal_pass_cropped, (GRID_SIZE, GRID_SIZE))
+except:
+    goal_img_pass = None
 
 # ==========================================
 # 載入玩家圖片序列並等比例縮放
@@ -189,6 +224,15 @@ class Player:
 # ----------------- 建地圖 & 障礙物設定 -----------------
 # 障礙物 Rect (這關特有)
 obstacle_rect = pg.Rect(488, 462, 235, 77)
+# 根據障礙物大小縮放圖片
+if obstacle_img_raw:
+    obstacle_img = pg.transform.scale(
+        obstacle_img_raw,
+        (obstacle_rect.width, obstacle_rect.height)
+    )
+else:
+    obstacle_img = None
+
 
 grid = [[Tile(c, r) for r in range(ROWS)] for c in range(COLS)]
 
@@ -209,6 +253,7 @@ player = Player(1, 1)
 laser_source = (OFFSET_X + GRID_SIZE//2, OFFSET_Y + GRID_SIZE//2)
 laser_direction = (1.0, 0.3)
 goal_tile = grid[1][9] # 終點格
+CRYSTAL_TILES = [(2,5),(3,5),(4,5)]
 
 # ----------------- 助手函式 -----------------
 def draw_laser_emitter():
@@ -263,17 +308,17 @@ def draw_tiles_contents():
                     p1, p2 = t.mirror.endpoints(t.center)
                     pg.draw.line(screen, BLACK, p1, p2, 6)
                     pg.draw.line(screen, YELLOW, p1, p2, 2)
-    
     pg.draw.rect(screen, GREEN, goal_tile.rect, 4)
-    
+    if goal_img:
+        img_to_draw = goal_img_pass if goal_passed and 'goal_img_pass' in globals() and goal_img_pass else goal_img
+        screen.blit(img_to_draw, goal_tile.rect.topleft)
     # === 繪製這關特有的障礙物 ===
-    pg.draw.rect(screen, GRAY, obstacle_rect)
-    cx = obstacle_rect.centerx
-    top = obstacle_rect.top
-    # 驚嘆號主體
-    pg.draw.rect(screen, RED, (cx - 4, top + 8, 8, obstacle_rect.height - 22), border_radius=3)
-    # 驚嘆號底點
-    pg.draw.circle(screen, RED, (cx, obstacle_rect.bottom - 8), 5)
+    # 障礙矩形透明，不顯示
+    if crystal_tile_img:
+        for (cc, rr) in CRYSTAL_TILES:
+            if 0 <= cc < COLS and 0 <= rr < ROWS:
+                screen.blit(crystal_tile_img, grid[cc][rr].rect.topleft)
+
 
 def draw_player():
     x, y = player.pos 
@@ -393,6 +438,7 @@ laser_path_cache = []
 laser_reached_goal = False
 last_laser_path = []
 last_mirrors = []
+goal_passed = False
 
 running = True
 while running:
@@ -418,11 +464,17 @@ while running:
                 player.anim_index = 0
                 player.is_moving = False
                 player.facing_right = True
+                goal_passed = False
 
             if event.key == pg.K_f: # Fire
                 last_mirrors = [(c,r,grid[c][r].mirror.angle) for c in range(COLS) for r in range(ROWS) if grid[c][r].mirror]
                 laser_path_cache, laser_reached_goal = fire_laser_and_get_path()
                 last_laser_path = laser_path_cache[:]
+                if laser_reached_goal:
+                    try:
+                        goal_passed = True
+                    except NameError:
+                        goal_passed = True
 
             if event.key == pg.K_e: # Interact
                 # [修改] 使用 hand_pos 進行判定
@@ -481,13 +533,18 @@ while running:
             player.x += dx * PLAYER_SPEED * (dt / 1000)
             player.y += dy * PLAYER_SPEED * (dt / 1000)
 
-            min_x = OFFSET_X + GRID_SIZE//2
-            max_x = OFFSET_X + COLS*GRID_SIZE - GRID_SIZE//2
+            min_x = 0#OFFSET_X + GRID_SIZE//2
+            max_x = screen.get_width()#OFFSET_X + COLS*GRID_SIZE - GRID_SIZE//2
             min_y = OFFSET_Y + GRID_SIZE//2
             max_y = OFFSET_Y + ROWS*GRID_SIZE - GRID_SIZE//2
             player.x = max(min_x, min(max_x, player.x))
             player.y = max(min_y, min(max_y, player.y))
             player.update_logic_position()
+
+    if player.x<20:
+        state="labb_b"
+        running = False
+        break
 
     if player.is_moving:
         player.anim_timer += dt

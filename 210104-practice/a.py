@@ -8,13 +8,14 @@ pg.init()
 # ----------------- 參數 -----------------
 GRID_SIZE = 79
 COLS = 16
-ROWS = 6            # 保留原設定：這關是半版面
+ROWS = 12
 WIDTH, HEIGHT = 1920, 1080
 FPS = 60
-PLAYER_SPEED = 300 
+PLAYER_SPEED = 300  # 平滑移動速度（px/sec）
 OFFSET_X = 330
-OFFSET_Y = 460      # 保留原設定：Y軸偏移量較大
-ANIMATION_DELAY = 150 # [新增] 動畫切換速度
+OFFSET_Y = 65       # 保留這關原本的 Offset 設定
+# 動畫速度控制 (毫秒 ms)
+ANIMATION_DELAY = 150 
 
 # 顏色
 WHITE = (245, 245, 245)
@@ -33,69 +34,53 @@ pg.display.set_caption("Bob - Obstacle Level")
 
 clock = pg.time.Clock()
 
-# --- [修改] 載入背景 (加入防呆) ---
+# --- 載入背景 (這關特定的背景) ---
 try:
-    bg_img = pg.image.load(os.path.join('picture', 'labg_e.png')).convert()
+    bg_img = pg.image.load(os.path.join('picture', 'labb_c.png')).convert()
     bg_img = pg.transform.scale(bg_img, (WIDTH, HEIGHT))
 except:
     bg_img = pg.Surface((WIDTH, HEIGHT))
     bg_img.fill(WHITE)
 
-# --- [修改] 載入圖片資源 (通用防呆載入) ---
-def load_safe_image(path, scale_size=None, rotate=0):
-    try:
-        img = pg.image.load(os.path.join('picture', path)).convert_alpha()
-        if scale_size:
-            img = pg.transform.scale(img, scale_size)
-        if rotate:
-            img = pg.transform.rotate(img, rotate)
-        return img
-    except:
-        # 建立紫色方塊代表缺圖
-        s = pg.Surface(scale_size if scale_size else (GRID_SIZE, GRID_SIZE), pg.SRCALPHA)
-        s.fill((255, 0, 255, 128))
-        return s
+# --- 障礙物提示圖片 ---
+try:
+    obstacle_img_raw = pg.image.load(
+        os.path.join('picture', 'lab_crystal.png')
+    ).convert_alpha()
+except:
+    obstacle_img_raw = None
 
-# 雷射發射器
-laser_emitter_img = load_safe_image('lab_laser_top.png', (int(GRID_SIZE * 1.5), int(GRID_SIZE * 1.5)), -18)
 
-# 玩家手持鏡子
-mirror_hold_image = load_safe_image('lab_mirror_whole.png', (int(GRID_SIZE * 0.6), int(GRID_SIZE * 0.6)))
 
-# 鏡子底圖
-mirror_base_image = load_safe_image('lab_mirror_tile.png', (GRID_SIZE, GRID_SIZE))
+# --- 雷射發射器圖片 ---
+try:
+    laser_emitter1_img = pg.image.load(os.path.join('picture', 'lab_laser_top.png')).convert_alpha()
+    laser_emitter1_img = pg.transform.scale(laser_emitter1_img, (int(GRID_SIZE * 1.5), int(GRID_SIZE * 1.5)))
+    laser_emitter_img = pg.transform.rotate(laser_emitter1_img, -18)
+except:
+    laser_emitter_img = pg.Surface((GRID_SIZE, GRID_SIZE))
+    laser_emitter_img.fill(RED)
 
-# --- [新增] 載入玩家動畫序列 ---
-player_images = []
-image_files = ["u_stand.png", "u_s_l.png", "u_s_r.png"]
-img_path_base = os.path.join("picture", "chuchutest")
-PLAYER_TARGET_HEIGHT = int(GRID_SIZE * 1.9) # 角色高度約為 1.9 格
+# --- 玩家手持鏡子圖片 ---
+try:
+    mirror_hold_image = pg.image.load(os.path.join('picture', 'lab_mirror_whole.png')).convert_alpha()
+except:
+    mirror_hold_image = pg.Surface((GRID_SIZE//2, GRID_SIZE//2))
+    mirror_hold_image.fill(YELLOW)
+mirror_hold_image = pg.transform.scale(mirror_hold_image, (int(GRID_SIZE * 0.6), int(GRID_SIZE * 0.6)))
 
-for f_name in image_files:
-    try:
-        full_path = os.path.join(img_path_base, f_name)
-        original = pg.image.load(full_path).convert_alpha()
-        
-        # 等比例縮放
-        old_w, old_h = original.get_size()
-        scale_factor = PLAYER_TARGET_HEIGHT / old_h
-        new_w = int(old_w * scale_factor)
-        
-        scaled_img = pg.transform.smoothscale(original, (new_w, PLAYER_TARGET_HEIGHT))
-        player_images.append(scaled_img)
-    except:
-        # 缺圖時用藍色長方形代替
-        fallback = pg.Surface((int(GRID_SIZE*0.8), PLAYER_TARGET_HEIGHT), pg.SRCALPHA)
-        pg.draw.rect(fallback, BLUE, fallback.get_rect())
-        player_images.append(fallback)
+# --- 載入鏡子的底圖 ---
+try:
+    mirror_base_image = pg.image.load(os.path.join('picture', 'lab_mirror_tile.png')).convert_alpha()
+    mirror_base_image = pg.transform.scale(mirror_base_image, (GRID_SIZE, GRID_SIZE))
+except:
+    mirror_base_image = None
 
-if not player_images: # 雙重保險
-    player_images = [pg.Surface((50,100))] * 3
-
-# --- 鏡子圖片字典 ---
+# --- 鏡子圖片載入與處理 ---
 mirror_images = {}
 try:
-    img_original = load_safe_image('lab_mirror_b.png', (GRID_SIZE, GRID_SIZE))
+    img_original = pg.image.load(os.path.join('picture', 'lab_mirror_b.png')).convert_alpha()
+    img_original = pg.transform.scale(img_original, (GRID_SIZE, GRID_SIZE))
     mirror_images = {
         45: img_original,
         135: pg.transform.rotate(img_original, 90)
@@ -103,34 +88,51 @@ try:
 except:
     pass
 
-# 終點圖片與通過圖片
+# --- 終點圖片 ---
 try:
     goal_img_raw = pg.image.load(os.path.join('picture', 'lab_detector.png')).convert_alpha()
-    try:
-        content_rect = goal_img_raw.get_bounding_rect(min_alpha=1)
-        goal_img_cropped = goal_img_raw.subsurface(content_rect).copy()
-    except:
-        goal_img_cropped = goal_img_raw
-    goal_img = pg.transform.smoothscale(goal_img_cropped, (GRID_SIZE, GRID_SIZE))
+    goal_img = pg.transform.scale(goal_img_raw, (GRID_SIZE, GRID_SIZE))
 except:
     goal_img = None
-try:
-    goal_pass_raw = pg.image.load(os.path.join('picture', 'lab_detector_pass.png')).convert_alpha()
-    try:
-        content_rect2 = goal_pass_raw.get_bounding_rect(min_alpha=1)
-        goal_pass_cropped = goal_pass_raw.subsurface(content_rect2).copy()
-    except:
-        goal_pass_cropped = goal_pass_raw
-    goal_img_pass = pg.transform.smoothscale(goal_pass_cropped, (GRID_SIZE, GRID_SIZE))
-except:
-    goal_img_pass = None
 
-# 小水晶圖片（格子大小）
-try:
-    crystal_img_raw = pg.image.load(os.path.join('picture', 'lab_crystal.png')).convert_alpha()
-    crystal_tile_img = pg.transform.smoothscale(crystal_img_raw, (GRID_SIZE, GRID_SIZE))
-except:
-    crystal_tile_img = None
+# ==========================================
+# 載入玩家圖片序列並等比例縮放
+# ==========================================
+player_images = []
+image_files = ["u_stand.png", "u_s_l.png", "u_s_r.png"]
+img_path_base = os.path.join("picture", "chuchutest")
+
+# 設定目標高度：大約兩格 (1.9倍)
+PLAYER_TARGET_HEIGHT = int(GRID_SIZE * 1.9)
+
+for f_name in image_files:
+    try:
+        full_path = os.path.join(img_path_base, f_name)
+        original = pg.image.load(full_path).convert_alpha()
+
+        # 計算等比例縮放
+        old_w, old_h = original.get_size()
+        if old_h > 0:
+            scale_factor = PLAYER_TARGET_HEIGHT / old_h
+            new_w = int(old_w * scale_factor)
+            
+            scaled_img = pg.transform.smoothscale(original, (new_w, PLAYER_TARGET_HEIGHT))
+            player_images.append(scaled_img)
+            print(f"已載入並縮放: {f_name} -> {new_w}x{PLAYER_TARGET_HEIGHT}")
+        else:
+            player_images.append(original)
+
+    except Exception as e:
+        print(f"無法載入 {f_name}: {e}")
+        fallback = pg.Surface((PLAYER_TARGET_HEIGHT//2, PLAYER_TARGET_HEIGHT), pg.SRCALPHA)
+        pg.draw.rect(fallback, (0, 255, 255), (0,0,PLAYER_TARGET_HEIGHT//2, PLAYER_TARGET_HEIGHT))
+        player_images.append(fallback)
+
+if not player_images:
+    fallback = pg.Surface((GRID_SIZE, GRID_SIZE*2), pg.SRCALPHA)
+    pg.draw.rect(fallback, (0, 255, 255), (0,0,GRID_SIZE, GRID_SIZE*2))
+    player_images = [fallback, fallback, fallback]
+
 
 # ----------------- 資料結構 -----------------
 class Tile:
@@ -180,7 +182,6 @@ class Player:
         self.holding = None
         self.adjust_mode = False
         
-        # [新增] 動畫相關屬性
         self.facing_right = True
         self.is_moving = False
         self.anim_index = 0
@@ -190,11 +191,11 @@ class Player:
     def pos(self):
         return (int(self.x), int(self.y))
     
-    # [新增] 手部位置判定 (核心邏輯)
+    # [新增] 手部判定座標
     @property
     def hand_pos(self):
         h = PLAYER_TARGET_HEIGHT
-        # 手部判定點：腳底向上算，約在圖片 65% 高度處
+        # 手部在圖片中的位置 = 頂部 + 65% 高度
         hand_y = (self.y - h // 2) + (h * 0.65)
         return (int(self.x), int(hand_y))
 
@@ -202,10 +203,19 @@ class Player:
         self.col = int((self.x - OFFSET_X) // GRID_SIZE)
         self.row = int((self.y - OFFSET_Y) // GRID_SIZE)
 
-# 障礙物 (保留原設定)
-obstacle_rect = pg.Rect(1360, 778, 230, 75)
+# ----------------- 建地圖 & 障礙物設定 -----------------
+# 障礙物 Rect (這關特有)
+obstacle_rect = pg.Rect(488, 462, 235, 77)
+# 根據障礙物大小縮放圖片
+if obstacle_img_raw:
+    obstacle_img = pg.transform.scale(
+        obstacle_img_raw,
+        (obstacle_rect.width, obstacle_rect.height)
+    )
+else:
+    obstacle_img = None
 
-# ----------------- 建地圖 -----------------
+
 grid = [[Tile(c, r) for r in range(ROWS)] for c in range(COLS)]
 
 # 禁止放置鏡子的格子（障礙物區域）
@@ -215,20 +225,16 @@ for c in range(COLS):
         if obstacle_rect.collidepoint(t.center):
             t.can_place = False
 
-# 示範鏡子
+# 示範鏡子 (這關的初始配置)
 grid[0][5].mirror = Mirror(45)
 grid[0][4].mirror = Mirror(45) 
 grid[0][3].mirror = Mirror(45)
 
 player = Player(1, 1)
 
-# 雷射來源
 laser_source = (OFFSET_X + GRID_SIZE//2, OFFSET_Y + GRID_SIZE//2)
 laser_direction = (1.0, 0.3)
-
-# 終點格 (保留原設定)
-goal_tile = grid[COLS-4][1]
-CRYSTAL_TILES = [(13, 4), (14, 4), (15, 4)]
+goal_tile = grid[1][9] # 終點格
 
 # ----------------- 助手函式 -----------------
 def draw_laser_emitter():
@@ -274,35 +280,33 @@ def draw_tiles_contents():
             t = grid[c][r]
             if t.can_place:
                 pg.draw.rect(screen, DARK_GRAY, t.rect, 2)
-                
             if t.mirror:
                 base_img = t.mirror.get_base_image()
                 if base_img: screen.blit(base_img, t.rect.topleft)
-                
                 img = t.mirror.get_image()
-                if img : screen.blit(img, t.rect.topleft)
+                if img: screen.blit(img, t.rect.topleft)
                 else:
                     p1, p2 = t.mirror.endpoints(t.center)
                     pg.draw.line(screen, BLACK, p1, p2, 6)
                     pg.draw.line(screen, YELLOW, p1, p2, 2)
+    pg.draw.rect(screen, RED, obstacle_rect, 3)
 
     pg.draw.rect(screen, GREEN, goal_tile.rect, 4)
     if goal_img:
-        img_to_draw = goal_img_pass if goal_passed and goal_img_pass else goal_img
-        screen.blit(img_to_draw, goal_tile.rect.topleft)
-    if crystal_tile_img:
-        for (cc, rr) in CRYSTAL_TILES:
-            if 0 <= cc < COLS and 0 <= rr < ROWS:
-                screen.blit(crystal_tile_img, grid[cc][rr].rect.topleft)
+        screen.blit(goal_img, goal_tile.rect.topleft)
+    # === 繪製這關特有的障礙物 ===
+    pg.draw.rect(screen, GRAY, obstacle_rect)
+
+    if obstacle_img:
+        screen.blit(obstacle_img, obstacle_rect.topleft)
+
 
 def draw_player():
-    x, y = player.pos
+    x, y = player.pos 
 
-    # [新增] 根據動畫狀態選擇圖片
     idx = player.anim_index % len(player_images)
     base_img = player_images[idx]
 
-    # [新增] 左右翻轉
     if player.facing_right:
         current_img = pg.transform.flip(base_img, True, False)
     else:
@@ -318,14 +322,14 @@ def draw_player():
         holding_img = mirror_hold_image.copy()
         if player.holding.angle == 45:
             holding_img = pg.transform.rotate(holding_img, 90)
-
+        
         m_w = holding_img.get_width()
         m_h = holding_img.get_height()
         
         m_draw_x = x - m_w // 2
         
-        # [新增] 手持物體跟隨手部位置 (65% 高度)
-        hand_offset_y = int(h * 0.65)
+        # [修改] 使用 65% 高度作為手持位置
+        hand_offset_y = int(h * 0.65) 
         m_draw_y = draw_y + hand_offset_y - m_h // 2
 
         screen.blit(holding_img, (m_draw_x, m_draw_y))
@@ -355,13 +359,11 @@ def fire_laser_and_get_path():
     path = []
     max_steps = 6000
     step_size = 5.0
-
     x, y = float(laser_source[0]), float(laser_source[1])
     vx, vy = laser_direction
     mag = math.hypot(vx, vy)
     if mag == 0: return path, False
     vx, vy = vx/mag * step_size, vy/mag * step_size
-
     reflections = 0
     reached_goal = False
 
@@ -369,26 +371,22 @@ def fire_laser_and_get_path():
         x += vx
         y += vy
         path.append((x, y))
-
         if goal_tile.rect.collidepoint(int(x), int(y)):
             reached_goal = True
             break
-
-        # [新增] 雷射碰到障礙物會停止
+        
+        # [新增] 障礙物碰撞
         if obstacle_rect.collidepoint(x, y):
             return path, False
 
-        if x < 0 or x > WIDTH or y < 0 or y > HEIGHT:
-            break
-
+        if x < 0 or x > WIDTH or y < 0 or y > HEIGHT: break
+        
         c = int((x - OFFSET_X) // GRID_SIZE)
         r = int((y - OFFSET_Y) // GRID_SIZE)
         hit = False
-        
         for dc in (-1, 0, 1):
             for dr in (-1, 0, 1):
-                cc = c + dc
-                rr = r + dr
+                cc, rr = c + dc, r + dr
                 if 0 <= cc < COLS and 0 <= rr < ROWS:
                     t = grid[cc][rr]
                     if t.mirror:
@@ -403,7 +401,6 @@ def fire_laser_and_get_path():
                             hit = True
                             break
             if hit: break
-
     return path, reached_goal
 
 def draw_laser_path(path):
@@ -422,7 +419,6 @@ laser_path_cache = []
 laser_reached_goal = False
 last_laser_path = []
 last_mirrors = []
-goal_passed = False
 
 running = True
 while running:
@@ -431,39 +427,31 @@ while running:
     for event in pg.event.get():
         if event.type == pg.QUIT:
             running = False
-
         if event.type == pg.KEYDOWN:
-
-            # -------- R 重設 --------
-            if event.key == pg.K_r:
+            if event.key == pg.K_r: # Reset
                 for c in range(COLS):
                     for r in range(ROWS):
                         grid[c][r].mirror = None
+                # 重設初始鏡子
                 grid[0][5].mirror = Mirror(45)
-                grid[0][4].mirror = Mirror(45)
-                grid[0][3].mirror = Mirror(45) 
+                grid[0][4].mirror = Mirror(45) 
+                grid[0][3].mirror = Mirror(45)
                 player.holding = None
                 player.adjust_mode = False
                 laser_path_cache = []
                 laser_reached_goal = False
                 last_laser_path = []
-                last_mirrors = []
-                # 重設動畫狀態
                 player.anim_index = 0
+                player.is_moving = False
                 player.facing_right = True
-                goal_passed = False
 
-            # -------- F 發射雷射 --------
-            if event.key == pg.K_f:
-                last_mirrors = [(c, r, grid[c][r].mirror.angle) for c in range(COLS) for r in range(ROWS) if grid[c][r].mirror]
+            if event.key == pg.K_f: # Fire
+                last_mirrors = [(c,r,grid[c][r].mirror.angle) for c in range(COLS) for r in range(ROWS) if grid[c][r].mirror]
                 laser_path_cache, laser_reached_goal = fire_laser_and_get_path()
                 last_laser_path = laser_path_cache[:]
-                if laser_reached_goal:
-                    goal_passed = True
 
-            # -------- E 互動 --------
-            if event.key == pg.K_e:
-                # [修改] 使用 hand_pos 判定互動位置
+            if event.key == pg.K_e: # Interact
+                # [修改] 使用 hand_pos 進行判定
                 t = tile_at_pixel(*player.hand_pos)
                 
                 if player.adjust_mode:
@@ -480,7 +468,8 @@ while running:
                     elif player.holding and t and t.can_place and t.mirror is None:
                         player.adjust_mode = True
                         laser_path_cache = []
-                        player.is_moving = False # 調整時停止移動動畫
+                        player.is_moving = False
+                        player.anim_index = 0
 
             if event.key == pg.K_q and player.adjust_mode:
                 player.adjust_mode = False
@@ -491,9 +480,8 @@ while running:
                     player.holding.angle = 135 if player.holding.angle == 45 else 45
                     laser_path_cache = []
 
-    player.is_moving = False # 預設靜止
+    player.is_moving = False
 
-    #     平滑移動
     if not player.adjust_mode:
         keys = pg.key.get_pressed()
         dx = dy = 0
@@ -510,50 +498,48 @@ while running:
             dy += 1
 
         if dx or dy:
-            player.is_moving = True
+            player.is_moving = True 
             laser_path_cache = []
             laser_reached_goal = False
-
             l = math.hypot(dx, dy)
             if l != 0:
                 dx, dy = dx/l, dy/l
-
             player.x += dx * PLAYER_SPEED * (dt / 1000)
             player.y += dy * PLAYER_SPEED * (dt / 1000)
 
             min_x = 0#OFFSET_X + GRID_SIZE//2
-            max_x =screen.get_width()# OFFSET_X + COLS*GRID_SIZE - GRID_SIZE//2
-            min_y =100# OFFSET_Y + GRID_SIZE//2
-            max_y = screen.get_height()-130#OFFSET_Y + ROWS*GRID_SIZE - GRID_SIZE//2
-            
+            max_x = screen.get_width()#OFFSET_X + COLS*GRID_SIZE - GRID_SIZE//2
+            min_y = OFFSET_Y + GRID_SIZE//2
+            max_y = OFFSET_Y + ROWS*GRID_SIZE - GRID_SIZE//2
             player.x = max(min_x, min(max_x, player.x))
             player.y = max(min_y, min(max_y, player.y))
-
             player.update_logic_position()
 
-    # [新增] 動畫計時器更新
+    if player.x<20:
+        state="labb_b"
+        running = False
+        break
+
     if player.is_moving:
         player.anim_timer += dt
         if player.anim_timer >= ANIMATION_DELAY:
             player.anim_timer = 0
             player.anim_index += 1
-            # 假設只有 3 張圖 (0, 1, 2)，簡單循環 1->2->1...
             if player.anim_index > 2:
                 player.anim_index = 1
     else:
         player.anim_index = 0
         player.anim_timer = 0
 
-    # ================== 畫畫面 ==================
     screen.fill(BLACK)
     screen.blit(bg_img, (0, 0))
     draw_grid()
     draw_shadow_laser(last_laser_path)
     draw_shadow_mirrors(last_mirrors)
     draw_tiles_contents()
-    draw_player()
+    draw_player() 
 
-    # [修改] 互動提示：根據手部位置顯示
+    # [修改] UI 提示也根據手的位置顯示
     cur_tile = tile_at_pixel(*player.hand_pos)
     
     if cur_tile and cur_tile.mirror:
@@ -562,21 +548,17 @@ while running:
         screen.blit(font.render("按E可調整鏡子角度", True, BLACK), (30, 30))
 
     if player.adjust_mode and player.holding:
+        img = player.holding.get_image()
         # 在調整模式下，鏡子會顯示在手部判定到的格子
         target_rect = cur_tile.rect if cur_tile else pg.Rect(0,0,0,0)
-
-        img = player.holding.get_image()
-        if img:
-            screen.blit(img, target_rect.topleft)
+        
+        if img: screen.blit(img, target_rect.topleft)
         else:
             p1, p2 = player.holding.endpoints(cur_tile.center)
             pg.draw.line(screen, BLACK, p1, p2, 6)
             pg.draw.line(screen, YELLOW, p1, p2, 2)
-            
-        screen.blit(font.render("調整模式: 方向鍵=旋轉, E=確認, Q=取消", True, BLACK),
-                    (300, HEIGHT - 30))
-        screen.blit(font.render(f"角度: {player.holding.angle}°", True, BLACK),
-                    (WIDTH - 160, HEIGHT - 30))
+        screen.blit(font.render("調整模式: 方向鍵=旋轉, E=確認, Q=取消", True, BLACK), (300, HEIGHT - 30))
+        screen.blit(font.render(f"角度: {player.holding.angle}°", True, BLACK), (WIDTH - 160, HEIGHT - 30))
 
     if not laser_path_cache:
         lx, ly = laser_source
@@ -584,13 +566,9 @@ while running:
         mag = math.hypot(vx, vy)
         if mag != 0:
             nx, ny = vx/mag, vy/mag
-            tip_len = 40
-            end_pos = (lx + nx*tip_len, ly + ny*tip_len)
-            pg.draw.line(screen, (180,60,60), laser_source, end_pos, 4)
-
+            pg.draw.line(screen, (180,60,60), laser_source, (lx+nx*40, ly+ny*40), 4)
         draw_laser_emitter()
-        screen.blit(font.render("按F發射雷射光", True, BLACK),
-                    (WIDTH - 220, 10))
+        screen.blit(font.render("按F發射雷射光", True, BLACK), (WIDTH - 220, 10))
 
     if laser_path_cache:
         draw_laser_path(laser_path_cache)
@@ -598,13 +576,7 @@ while running:
         color = GREEN if laser_reached_goal else RED
         screen.blit(font.render(msg, True, color), (WIDTH - 100, 30))
 
-    legend = [
-        "方向鍵: 移動 / 轉動鏡子 (調整模式)",
-        "E: 撿起 / 放置",
-        "Q: 取消調整",
-        "F: 發射雷射",
-        "R: 重新開始"
-    ]
+    legend = ["方向鍵: 移動", "E: 撿起/放置", "Q: 取消調整", "F: 發射雷射", "R: 重設"]
     for i, s in enumerate(legend):
         screen.blit(font.render(s, True, BLACK), (10, HEIGHT - 110 + i*18))
 

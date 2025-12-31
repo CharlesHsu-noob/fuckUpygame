@@ -48,7 +48,7 @@ char_half_w=24
 
 # ================= 玩家設定 =================
 class char(pg.sprite.Sprite):
-    def __init__(self,image:pg.surface,player_x,player_y):
+    def __init__(self,image:pg.surface.Surface,player_x,player_y):
         super().__init__()
         self.image=image
         self.rect=self.image.get_rect(center=(player_x,player_y))
@@ -74,7 +74,7 @@ last_jump_time = -750 # 設為負數是為了讓遊戲一開始就能馬上跳
 
 # ================= 平台設定 =================
 class platOb(pg.sprite.Sprite):
-    def __init__(self,image:pg.surface,pos:tuple[int,int]):
+    def __init__(self,image:pg.surface.Surface,pos:tuple[int,int]):
         super().__init__()
         self.image=image
         self.rect=self.image.get_rect(center=pos)
@@ -193,14 +193,14 @@ while running:
         PLAYER_WIDTH // 2,
         min(WORLD_WIDTH - PLAYER_WIDTH // 2, player_x)
     )
-
+    print(bg_scroll_anchor_y)
     # ---------- 向上捲動 (鏡頭跟隨) ----------
     if player_y < SCROLL_UP_TRIGGER_Y:
         scroll = SCROLL_UP_TRIGGER_Y - player_y
         player_y += scroll
         # 修正：所有平台一起移動，石頭位置改變
         for plat in platforms:
-            plat.y += scroll
+            plat.y += int(scroll)
         
         # 修正：背景捲動基準點也要跟著移動，確保背景與玩家同步
         bg_scroll_anchor_y += scroll
@@ -225,7 +225,7 @@ while running:
         if scroll > 0:
             player_y -= scroll
             for plat in platforms:
-                plat.y -= scroll
+                plat.y -= int(scroll)
 
             bg_scroll_anchor_y -= scroll
             bg_scroll_anchor_y = max(bg_scroll_anchor_y, BG_SCROLL_ANCHOR_INITIAL)
@@ -259,8 +259,8 @@ while running:
     # 背景高度 3500, 螢幕高度 1080 -> y = 1080 - 3500 = -2420
     # 玩家往上跳 (player_y 變小)，背景向下捲 (bg_y 變大)
     bg_scroll_speed = 2.0
-    bg_start_y = 1080 - 3500
-    bg_y = bg_start_y + (bg_scroll_anchor_y - player_y) * bg_scroll_speed
+    bg_start_y = 480 - 3500
+    bg_y = bg_start_y + (bg_scroll_anchor_y) * bg_scroll_speed
     
     # 限制背景不要跑出範圍 (上方不能露出黑邊，下方不能露出黑邊)
     if bg_y > 0: bg_y = 0

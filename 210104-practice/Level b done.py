@@ -78,6 +78,28 @@ try:
 except:
     pass
 
+# --- 終點圖片與通過圖片 ---
+try:
+    goal_img_raw = pg.image.load(os.path.join('picture', 'lab_detector.png')).convert_alpha()
+    try:
+        content_rect = goal_img_raw.get_bounding_rect(min_alpha=1)
+        goal_img_cropped = goal_img_raw.subsurface(content_rect).copy()
+    except:
+        goal_img_cropped = goal_img_raw
+    goal_img = pg.transform.smoothscale(goal_img_cropped, (GRID_SIZE, GRID_SIZE))
+except:
+    goal_img = None
+try:
+    goal_pass_raw = pg.image.load(os.path.join('picture', 'lab_detector_pass.png')).convert_alpha()
+    try:
+        content_rect2 = goal_pass_raw.get_bounding_rect(min_alpha=1)
+        goal_pass_cropped = goal_pass_raw.subsurface(content_rect2).copy()
+    except:
+        goal_pass_cropped = goal_pass_raw
+    goal_img_pass = pg.transform.smoothscale(goal_pass_cropped, (GRID_SIZE, GRID_SIZE))
+except:
+    goal_img_pass = None
+
 # ==========================================
 # 載入玩家圖片序列並等比例縮放
 # ==========================================
@@ -202,6 +224,7 @@ player = Player(1, 1)
 laser_source = (OFFSET_X + GRID_SIZE//2, OFFSET_Y + GRID_SIZE//2)
 laser_direction = (1.0, 0.3)
 goal_tile = grid[COLS-2][ROWS-2]
+goal_passed = False
 
 # ----------------- 助手函式 -----------------
 def draw_laser_emitter():
@@ -257,6 +280,9 @@ def draw_tiles_contents():
                     pg.draw.line(screen, BLACK, p1, p2, 6)
                     pg.draw.line(screen, YELLOW, p1, p2, 2)
     pg.draw.rect(screen, GREEN, goal_tile.rect, 4)
+    if goal_img:
+        img_to_draw = goal_img_pass if goal_passed and goal_img_pass else goal_img
+        screen.blit(img_to_draw, goal_tile.rect.topleft)
 
 def draw_player():
     x, y = player.pos 
@@ -394,11 +420,14 @@ while running:
                 player.anim_index = 0
                 player.is_moving = False
                 player.facing_right = True
+                goal_passed = False
 
             if event.key == pg.K_f: # Fire
                 last_mirrors = [(c,r,grid[c][r].mirror.angle) for c in range(COLS) for r in range(ROWS) if grid[c][r].mirror]
                 laser_path_cache, laser_reached_goal = fire_laser_and_get_path()
                 last_laser_path = laser_path_cache[:]
+                if laser_reached_goal:
+                    goal_passed = True
 
             if event.key == pg.K_e: # Interact
                 # [修改] 使用 hand_pos 進行判定
@@ -457,8 +486,8 @@ while running:
             player.x += dx * PLAYER_SPEED * (dt / 1000)
             player.y += dy * PLAYER_SPEED * (dt / 1000)
 
-            min_x = OFFSET_X + GRID_SIZE//2
-            max_x = OFFSET_X + COLS*GRID_SIZE - GRID_SIZE//2
+            min_x = 0#OFFSET_X + GRID_SIZE//2
+            max_x = screen.get_width()#OFFSET_X + COLS*GRID_SIZE - GRID_SIZE//2
             min_y = OFFSET_Y + GRID_SIZE//2
             max_y = OFFSET_Y + ROWS*GRID_SIZE - GRID_SIZE//2
             player.x = max(min_x, min(max_x, player.x))
