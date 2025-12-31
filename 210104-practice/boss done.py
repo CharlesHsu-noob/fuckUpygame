@@ -527,10 +527,10 @@ while running:
             player.x += dx * PLAYER_SPEED * (dt / 1000)
             player.y += dy * PLAYER_SPEED * (dt / 1000)
 
-            min_x = OFFSET_X + GRID_SIZE//2
-            max_x = OFFSET_X + COLS*GRID_SIZE - GRID_SIZE//2
-            min_y = OFFSET_Y + GRID_SIZE//2
-            max_y = OFFSET_Y + ROWS*GRID_SIZE - GRID_SIZE//2
+            min_x =0 #OFFSET_X + GRID_SIZE//2
+            max_x =screen.get_width() #OFFSET_X + COLS*GRID_SIZE - GRID_SIZE//2
+            min_y = 100#OFFSET_Y + GRID_SIZE//2
+            max_y = screen.get_height()-130#OFFSET_Y + ROWS*GRID_SIZE - GRID_SIZE//2
             player.x = max(min_x, min(max_x, player.x))
             player.y = max(min_y, min(max_y, player.y))
             player.update_logic_position()
