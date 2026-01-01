@@ -90,6 +90,18 @@ mirror_images = {
     135: img_135
 }
 
+# ----------------- 載入音效 -----------------
+try:
+    # 嘗試載入受傷音效
+    hit_sound = pg.mixer.Sound(os.path.join('sean', 'battle', 'voice', 'snake_d.ogg'))
+except:
+    try:
+        # 如果失敗，嘗試往上一層找 (針對不同執行目錄)
+        hit_sound = pg.mixer.Sound(os.path.join('..', 'sean', 'battle', 'voice', 'snake_d.ogg'))
+    except:
+        print("Warning: snake_d.ogg not found")
+        hit_sound = None
+
 # ----------------- 新增：旋轉控制參數 -----------------
 turret_angle = 0.0       # 目前角度 (0度 = 水平向右)
 turret_speed = 30.0      # 旋轉速度 (每秒轉動的度數)
@@ -170,8 +182,8 @@ player = Player(1, 1)
 laser_source = (OFFSET_X + GRID_SIZE//2 +10, OFFSET_Y + GRID_SIZE//2)
 laser_direction = (1.0, 0.3)
 
-emitter_hitbox_w = int(GRID_SIZE * 0.4)
-emitter_hitbox_h = int(GRID_SIZE * 0.2)
+emitter_hitbox_w = int(GRID_SIZE * 0.6)
+emitter_hitbox_h = int(GRID_SIZE * 0.6)
 
 # ----------------- 助手函式 -----------------
 # 修改後的函式，增加 img 參數
@@ -410,9 +422,15 @@ while running:
     # 判斷目前的砲台狀態與是否發射
     current_base_img = laser_emitter_base_blue
 
+    # --- 時間參數設定 ---
+    PHASE_BLUE = 6500       # 藍色追蹤時間 (6.5秒)
+    PHASE_RED = 1500        # 紅色鎖定時間 (1.5秒)
+    TOTAL_CYCLE = PHASE_BLUE + PHASE_RED # 總週期 8.0秒
+    FREEZE_DURATION = 500   # 發射前定身時間 (0.5秒)
+
     # --- A. 追蹤玩家瞄準 ---
-    freeze_active = (elapsed_time >= 12500 and elapsed_time < 13000)
-    if not freeze_active:
+    # 只有在藍色階段才追蹤 (紅燈時鎖定角度)
+    if elapsed_time < PHASE_BLUE:
         dx_track = player.x - laser_source[0]
         dy_track = player.y - laser_source[1]
         turret_angle = math.degrees(math.atan2(dy_track, dx_track))
@@ -420,11 +438,14 @@ while running:
     rad = math.radians(turret_angle)
     laser_direction = (math.cos(rad), math.sin(rad))
 
-    if elapsed_time < 10000:
+    # 定身判定
+    freeze_active = (elapsed_time >= (TOTAL_CYCLE - FREEZE_DURATION) and elapsed_time < TOTAL_CYCLE)
+
+    if elapsed_time < PHASE_BLUE:
         current_base_img = laser_emitter_base_blue
-    elif 10000 <= elapsed_time < 13000:
+    elif elapsed_time < TOTAL_CYCLE:
         current_base_img = laser_emitter_base_red
-    elif elapsed_time >= 13000:
+    elif elapsed_time >= TOTAL_CYCLE:
         # 1. 執行發射運算
         last_mirrors = [
             (c, r, grid[c][r].mirror.angle)
@@ -442,6 +463,8 @@ while running:
                 if math.hypot(px - player.x, py - player.y) <= r_hit:
                     player_hp = max(0, player_hp - 25)
                     damage_applied_for_shot = True
+                    if hit_sound:
+                        hit_sound.play()
                     break
         if player_hp <= 0:
             game_over = True
@@ -571,11 +594,13 @@ while running:
             start_offset = max(emitter_hitbox_w, emitter_hitbox_h) * 0.5 + 8
             sx, sy = lx + ux * start_offset, ly + uy * start_offset
             end_p = (sx + ux * 60, sy + uy * 60)
-            pg.draw.line(screen, (200, 50, 50) if elapsed > 10000 else (200, 50, 50), (sx, sy), end_p, 3)
+            pg.draw.line(screen, (200, 50, 50), (sx, sy), end_p, 3)
 
     draw_laser_emitter(current_base_img, turret_angle)
     cx, cy = laser_source
     hitbox = pg.Rect(cx - emitter_hitbox_w // 2, cy - emitter_hitbox_h // 2, emitter_hitbox_w, emitter_hitbox_h)
+    # 顯示砲台判定範圍（DEBUG）
+    pg.draw.rect(screen, (0, 255, 0), hitbox, 2)
 
     # 互動提示
     cur_tile = tile_at_pixel(player.x, player.y)
@@ -619,8 +644,8 @@ while running:
         screen.blit(t, tr.topleft)
     
     # 顯示倒數計時資訊 (可選)
-    time_left = max(0, 13000 - elapsed_time) / 1000
-    timer_color = RED if elapsed_time >= 10000 else BLACK
+    time_left = max(0, 8000 - elapsed_time) / 1000
+    timer_color = RED if elapsed_time >= 6500 else BLACK
     screen.blit(font.render(f"下次發射: {time_left:.1f}秒", True, timer_color), (WIDTH - 220, 10))
 
     # 畫雷射路徑
