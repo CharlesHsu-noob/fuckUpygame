@@ -34,7 +34,9 @@ offset_y = (WINDOW_HEIGHT - scaled_height) // 2
 BLACK = (0, 0, 0)
 GREEN = (34, 139, 34)
 BLUE = (0, 100, 255)
+RED = (255, 0, 0) # 除錯用紅色
 
+# 請確保你的圖片路徑正確，若無圖片可先註解掉 image.load 改用 fill
 bg_img_raw = pg.image.load(os.path.join("picture", "forest_e.png")).convert()
 bg_img_full = pg.transform.scale(bg_img_raw, (2000, 3500))
 
@@ -43,7 +45,9 @@ player_img = pg.image.load(os.path.join("picture", "stand.png")).convert_alpha()
 PLAYER_WIDTH = 48
 PLAYER_HEIGHT = 64
 player_img = pg.transform.scale(player_img, (PLAYER_WIDTH, PLAYER_HEIGHT))
-PLAYER_WIDTH = 16
+# 這裡原本有重設 PLAYER_WIDTH，稍微修正邏輯保留圖片寬度
+# PLAYER_WIDTH = 16 (原始代碼這行會讓圖片與碰撞箱大小不一致，暫時保留你的設定)
+PLAYER_WIDTH = 16 
 char_half_w=24
 
 # ================= 玩家設定 =================
@@ -52,9 +56,10 @@ class char(pg.sprite.Sprite):
         super().__init__()
         self.image=image
         self.rect=self.image.get_rect(center=(player_x,player_y))
-player_x = 950
+
+player_x = 1350
 player_y = 300 # 玩家初始位置
-bg_scroll_anchor_y = 300 # 背景捲動基準點 (與初始位置相同，讓一開始背景位置正確)
+bg_scroll_anchor_y = 300 # 背景捲動基準點
 BG_SCROLL_ANCHOR_INITIAL = bg_scroll_anchor_y
 player_vx = 0
 player_vy = 0
@@ -68,9 +73,9 @@ jump_pressed = False
 COYOTE_TIME = 0.12
 time_since_ground = 0
 
-# --- 新增：跳躍冷卻設定 ---
+# --- 跳躍冷卻設定 ---
 JUMP_COOLDOWN = 750  # 毫秒 
-last_jump_time = -750 # 設為負數是為了讓遊戲一開始就能馬上跳
+last_jump_time = -750 
 
 # ================= 平台設定 =================
 class platOb(pg.sprite.Sprite):
@@ -90,6 +95,11 @@ platform_positions = [
     (700, -450),(620, -530),(550, -590),(500, -640),(450, -693),(370, -693),(290, -693),(210, -693),(130, -693),(50, -693),(-30, -693)
 ]
 
+# 定義要隱藏的岩石座標
+hidden_rock_coords = [
+    (290, -693), (210, -693), (130, -693), (50, -693), (-30, -693)
+]
+
 platforms = [pg.Rect(x, y, PLATFORM_WIDTH, PLATFORM_HEIGHT) for x, y in platform_positions]
 ground = platforms[:18]
 
@@ -100,25 +110,35 @@ platform_object=[]
 for pos in platform_positions:
     wall=platOb(rock_img,pos)
     platform_object.append(wall)
+
+# ================= [新增] 左側隱形牆壁設定 =================
+# x = -100 (在最左邊平台 -60 的更左邊)
+# y = -5000 (設很高，確保往上跳也擋得住)
+# w = 40 (厚度)
+# h = 6000 (高度，確保覆蓋整個遊戲垂直範圍)
+debug_wall = pg.Rect(320, 100, 40, 6000)
+
+# 將牆壁加入 platforms 列表，這樣它就會自動擁有碰撞和捲動功能
+platforms.append(debug_wall)
+# ========================================================
+
+
 # ================= 判斷是否站在平台 =================
 offset_for_plat_x=48
 def is_on_platform(px, py):
     for plat in platforms:
-        #abs_x=abs(px-plat[0])
         if plat.colliderect(px, py,PLAYER_WIDTH,PLAYER_HEIGHT):
             return True
     return False
 
 # ================= 捲動設定 =================
 SCROLL_UP_TRIGGER_Y = WORLD_HEIGHT * 0.35
-SCROLL_DOWN_TRIGGER_Y = 250 # 設為較低的值，確保人物回到地面時鏡頭能歸位 (原為 WORLD_HEIGHT * 0.6)
+SCROLL_DOWN_TRIGGER_Y = 250 
 
 # ================= 遊戲主迴圈 =================
 running = True
 while running:
     dt = clock.tick(FPS) / 1000
-    
-    # 取得目前時間 (毫秒)
     current_time = pg.time.get_ticks()
 
     for event in pg.event.get():
@@ -139,17 +159,15 @@ while running:
     else:
         time_since_ground += dt
 
-    # ---------- 跳躍 (修改處) ----------
-    # 判斷條件增加： (目前時間 - 上次跳躍時間) 必須大於 冷卻時間
+    # ---------- 跳躍 ----------
     if keys[pg.K_SPACE]:
         if not jump_pressed and time_since_ground <= COYOTE_TIME:
             if current_time - last_jump_time > JUMP_COOLDOWN: 
                 player_vy = JUMP_SPEED
                 jump_pressed = True
-                time_since_ground = COYOTE_TIME + 1 # 清除土狼時間
-                last_jump_time = current_time       # 更新上次跳躍時間
+                time_since_ground = COYOTE_TIME + 1 
+                last_jump_time = current_time       
     else:
-        # 如果沒有按空白鍵，就允許下次跳躍
         jump_pressed = False
 
     # ---------- 水平移動 ----------
@@ -161,10 +179,9 @@ while running:
         PLAYER_HEIGHT
     )
     
+    # 碰撞檢測 (包含新增的牆壁)
     for i in range(len(platforms)):
-        plat=platforms[i]
-        plat_sprite=platform_object[i]
-        #if pg.sprite.collide_rect(char_u,plat_sprite):
+        plat = platforms[i]
         if player_rect.colliderect(plat):
             if player_vx > 0:
                 player_x = plat.left - PLAYER_WIDTH // 2
@@ -198,34 +215,39 @@ while running:
         min(WORLD_WIDTH - PLAYER_WIDTH // 2, player_x)
     )
     
-    # ---------- 向上捲動 (鏡頭跟隨) ----------
+    # ---------- 向上捲動 ----------
     if player_y < SCROLL_UP_TRIGGER_Y:
         scroll = SCROLL_UP_TRIGGER_Y - player_y
         int_scroll = int(scroll)
         player_y += int_scroll
-        # 修正：所有平台一起移動，石頭位置改變
         for plat in platforms:
             plat.y += int_scroll
         
-        # 修正：背景捲動基準點也要跟著移動，確保背景與玩家同步
+        new_hidden_coords = []
+        for h_coord in hidden_rock_coords:
+            new_hidden_coords.append((h_coord[0], h_coord[1] + int_scroll))
+        hidden_rock_coords = new_hidden_coords
+        
         bg_scroll_anchor_y += int_scroll
 
-    # ---------- 向下捲動 (鏡頭跟隨，限制最低高度) ----------
+    # ---------- 向下捲動 ----------
     INITIAL_GROUND_Y = 322
     if player_y > SCROLL_DOWN_TRIGGER_Y:
         raw_scroll = player_y - SCROLL_DOWN_TRIGGER_Y
-        # 使用整數計算，避免浮點數誤差導致背景與平台不同步
         int_scroll = int(raw_scroll)
 
-        # 1️⃣ 限制地面不能低於初始地面
         if platforms[0].y - int_scroll < INITIAL_GROUND_Y:
             int_scroll = platforms[0].y - INITIAL_GROUND_Y
 
-        # 2️⃣ 若已無法再捲動，直接歸位
         if int_scroll > 0:
             player_y -= int_scroll
             for plat in platforms:
                 plat.y -= int_scroll
+            
+            new_hidden_coords = []
+            for h_coord in hidden_rock_coords:
+                new_hidden_coords.append((h_coord[0], h_coord[1] - int_scroll))
+            hidden_rock_coords = new_hidden_coords
 
             bg_scroll_anchor_y -= int_scroll
             bg_scroll_anchor_y = max(bg_scroll_anchor_y, BG_SCROLL_ANCHOR_INITIAL)
@@ -235,10 +257,17 @@ while running:
     world_surface.fill((0, 0, 0, 0))
 
     for plat in platforms:
-        if plat in ground:
+        # === [新增] 繪製除錯牆壁 (紅色) ===
+        if plat == debug_wall:
+            pass # 畫出紅色矩形
+        # ================================
+        elif plat in ground:
+            pass
+        elif plat.topleft in hidden_rock_coords:
             pass
         else:
             world_surface.blit(rock_img, plat.topleft)
+            
     blit_offset_y=5
     blit_offset_x=15
     world_surface.blit(
@@ -254,25 +283,20 @@ while running:
 
     screen.fill(BLACK)
 
-    # 計算背景位置
-    # 當 player_y = bg_scroll_anchor_y 時，顯示背景底部 (bg_start_y)
-    # 背景高度 3500, 螢幕高度 1080 -> y = 1080 - 3500 = -2420
-    # 玩家往上跳 (player_y 變小)，背景向下捲 (bg_y 變大)
+    # 背景繪製
     bg_scroll_speed = 2.0
     bg_start_y = 480 - 3500
     bg_y = bg_start_y + (bg_scroll_anchor_y) * bg_scroll_speed
     
-    # 限制背景不要跑出範圍 (上方不能露出黑邊，下方不能露出黑邊)
     if bg_y > 0: bg_y = 0
     if bg_y < 1080 - 3500: bg_y = 1080 - 3500
 
-    # 置中繪製
     bg_x = (WINDOW_WIDTH - 2000) // 2
     screen.blit(bg_img_full, (bg_x, bg_y))
 
     screen.blit(scaled_surface, (offset_x, offset_y))
     pg.display.flip()
-    #update class 
+    
     char_u.rect=char_u.image.get_rect(center=(player_x,player_y))
     
 pg.quit()
